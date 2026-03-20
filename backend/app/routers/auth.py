@@ -96,7 +96,6 @@ async def register(body: RegisterRequest):
             {
                 "id": user_id,
                 "full_name": body.full_name,
-                "email": body.email,
             }
         ).execute()
     except APIError as exc:
