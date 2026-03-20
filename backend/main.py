@@ -31,7 +31,7 @@ app = FastAPI(
 default_origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://loopify.vercel.app",
+    "https://loopify3.vercel.app",
 ]
 
 env_origins = os.getenv("ALLOWED_ORIGINS", "")
