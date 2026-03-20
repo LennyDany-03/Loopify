@@ -47,13 +47,15 @@ export default function RegisterPage() {
 
   const displayError = localError || error;
 
+  const inputClass = "w-full glass-card text-white text-sm rounded-xl px-4 py-3 outline-none focus:border-violet-500 transition-all duration-200 placeholder:text-zinc-600 focus:shadow-lg focus:shadow-violet-500/5";
+
   return (
     <>
       <h2 className="text-white text-xl font-semibold mb-1">Create account</h2>
       <p className="text-zinc-500 text-sm mb-6">Start building your loops today</p>
 
       {displayError && (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg px-4 py-3 mb-5">
+        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl px-4 py-3 mb-5 animate-scale-in">
           {displayError}
         </div>
       )}
@@ -70,7 +72,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             placeholder="Lenny Dany"
-            className="w-full bg-[#1a1a24] border border-white/[0.08] text-white text-sm rounded-lg px-4 py-3 outline-none focus:border-violet-500 transition-colors placeholder:text-zinc-600"
+            className={inputClass}
           />
         </div>
 
@@ -85,7 +87,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             placeholder="lenny@example.com"
-            className="w-full bg-[#1a1a24] border border-white/[0.08] text-white text-sm rounded-lg px-4 py-3 outline-none focus:border-violet-500 transition-colors placeholder:text-zinc-600"
+            className={inputClass}
           />
         </div>
 
@@ -100,7 +102,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             placeholder="min 8 characters"
-            className="w-full bg-[#1a1a24] border border-white/[0.08] text-white text-sm rounded-lg px-4 py-3 outline-none focus:border-violet-500 transition-colors placeholder:text-zinc-600"
+            className={inputClass}
           />
         </div>
 
@@ -115,14 +117,14 @@ export default function RegisterPage() {
             onChange={handleChange}
             required
             placeholder="••••••••"
-            className="w-full bg-[#1a1a24] border border-white/[0.08] text-white text-sm rounded-lg px-4 py-3 outline-none focus:border-violet-500 transition-colors placeholder:text-zinc-600"
+            className={inputClass}
           />
         </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-lg py-3 transition-colors mt-2"
+          className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm rounded-xl py-3 transition-all duration-200 mt-2 shadow-lg shadow-violet-500/20 hover:shadow-xl hover:shadow-violet-500/30 active:scale-[0.98]"
         >
           {isLoading ? "Creating account..." : "Create account →"}
         </button>
@@ -130,7 +132,7 @@ export default function RegisterPage() {
 
       <p className="text-zinc-500 text-sm text-center mt-6">
         Already have an account?{" "}
-        <Link href="/login" className="text-violet-400 hover:text-violet-300 transition-colors">
+        <Link href="/login" className="text-violet-400 hover:text-violet-300 transition-colors font-medium">
           Log in
         </Link>
       </p>

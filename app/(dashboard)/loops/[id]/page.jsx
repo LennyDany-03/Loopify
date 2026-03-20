@@ -6,7 +6,7 @@ import useLoopStore from "@/lib/store/useLoopStore";
 import HeatmapGrid from "@/components/analytics/HeatmapGrid";
 import WeeklyChart from "@/components/analytics/WeeklyChart";
 import StreakCard from "@/components/analytics/StreakCard";
-import CheckinButton from "@/components/loops/CheckinButton";
+import SlideToComplete from "@/components/loops/SlideToComplete";
 import LoopForm from "@/components/loops/LoopForm";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
@@ -17,7 +17,7 @@ export default function LoopDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  const { loops, updateLoop, deleteLoop, checkinLoop, todayCheckins } = useLoopStore();
+  const { loops, fetchLoops, updateLoop, deleteLoop, checkinLoop, todayCheckins, fetchTodayCheckins } = useLoopStore();
   const loop = loops.find((l) => l.id === id);
 
   const [heatmap, setHeatmap]     = useState([]);
@@ -26,6 +26,12 @@ export default function LoopDetailPage() {
   const [loading, setLoading]     = useState(true);
   const [showEdit, setShowEdit]   = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+
+  // Fetch loops + today's checkins so page works on direct load / reload
+  useEffect(() => {
+    fetchLoops();
+    fetchTodayCheckins();
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -72,13 +78,21 @@ export default function LoopDetailPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
 
-      {/* Header */}
-      <div className="flex items-start justify-between">
+      {/* ── Header ────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 animate-fade-up">
         <div className="flex items-center gap-3">
-          <span className="text-4xl">{loop.icon}</span>
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0"
+            style={{
+              background: `linear-gradient(135deg, ${loop.color}22, ${loop.color}11)`,
+              border: `1px solid ${loop.color}44`,
+            }}
+          >
+            {loop.icon}
+          </div>
           <div>
-            <h1 className="text-white text-2xl font-bold">{loop.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
+            <h1 className="text-white text-xl sm:text-2xl font-bold">{loop.name}</h1>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <span className="text-xs bg-white/[0.06] text-zinc-400 px-2 py-0.5 rounded-full">
                 {loop.category}
               </span>
@@ -96,18 +110,23 @@ export default function LoopDetailPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <CheckinButton
-            loopId={id}
-            isChecked={isCheckedToday}
-            onCheckin={checkinLoop}
-          />
           <Button variant="ghost" onClick={() => setShowEdit(true)}>Edit</Button>
           <Button variant="danger" onClick={() => setShowDelete(true)}>Delete</Button>
         </div>
       </div>
 
-      {/* Streak cards row */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* ── Slide to Complete ─────────────────────────────── */}
+      <div className="animate-fade-up" style={{ animationDelay: '80ms' }}>
+        <SlideToComplete
+          loopId={id}
+          isChecked={isCheckedToday}
+          onCheckin={checkinLoop}
+          color={loop.color}
+        />
+      </div>
+
+      {/* ── Streak cards row ──────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 stagger-children">
         <StreakCard label="Current Streak" value={loop.current_streak} icon="🔥" />
         <StreakCard label="Best Streak"    value={loop.best_streak}    icon="🏆" />
         <StreakCard label="Total Checkins" value={loop.total_checkins} icon="✅" />
@@ -117,23 +136,23 @@ export default function LoopDetailPage() {
         <div className="flex items-center justify-center h-40"><Spinner /></div>
       ) : (
         <>
-          {/* Heatmap */}
-          <div className="bg-[#111118] border border-white/[0.07] rounded-2xl p-6">
+          {/* ── Heatmap ─────────────────────────────────────── */}
+          <div className="glass-card rounded-2xl p-4 sm:p-6 animate-fade-up" style={{ animationDelay: '200ms' }}>
             <h2 className="text-white font-semibold mb-4">
               {new Date().getFullYear()} Activity
             </h2>
             <HeatmapGrid data={heatmap} color={loop.color} />
           </div>
 
-          {/* Weekly chart */}
-          <div className="bg-[#111118] border border-white/[0.07] rounded-2xl p-6">
+          {/* ── Weekly chart ────────────────────────────────── */}
+          <div className="glass-card rounded-2xl p-4 sm:p-6 animate-fade-up" style={{ animationDelay: '300ms' }}>
             <h2 className="text-white font-semibold mb-4">Last 12 Weeks</h2>
             <WeeklyChart data={weekly} color={loop.color} />
           </div>
         </>
       )}
 
-      {/* Edit modal */}
+      {/* ── Edit modal ────────────────────────────────────── */}
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="Edit Loop">
         <LoopForm
           initialData={loop}
@@ -142,7 +161,7 @@ export default function LoopDetailPage() {
         />
       </Modal>
 
-      {/* Delete confirm modal */}
+      {/* ── Delete confirm modal ──────────────────────────── */}
       <Modal open={showDelete} onClose={() => setShowDelete(false)} title="Delete Loop">
         <p className="text-zinc-400 text-sm mb-6">
           Are you sure you want to delete <span className="text-white font-medium">{loop.name}</span>?

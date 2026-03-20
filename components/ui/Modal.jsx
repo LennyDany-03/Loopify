@@ -24,13 +24,13 @@ export default function Modal({ open, onClose, title, children }) {
   return (
     // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
       onClick={onClose}
     >
-      {/* Panel — stop click propagating to backdrop */}
+      {/* Panel */}
       <div
-        className="bg-[#111118] border border-white/[0.08] rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl"
+        className="glass-strong rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl shadow-black/40 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -38,13 +38,13 @@ export default function Modal({ open, onClose, title, children }) {
           <h2 className="text-white font-semibold text-base">{title}</h2>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-white transition-colors text-xl leading-none w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/[0.06]"
+            className="text-zinc-500 hover:text-white transition-colors text-xl leading-none w-8 h-8 flex items-center justify-center rounded-xl hover:bg-white/[0.06]"
           >
             ×
           </button>
         </div>
 
-        {/* Body — scrollable if content overflows */}
+        {/* Body */}
         <div className="px-6 py-5 overflow-y-auto">
           {children}
         </div>
