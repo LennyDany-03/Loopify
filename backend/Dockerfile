@@ -11,12 +11,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # ── Install dependencies ───────────────────────────────────────────────────────
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # ── Copy app source ────────────────────────────────────────────────────────────
-COPY . .
+COPY backend/ .
 
 # ── Expose port ────────────────────────────────────────────────────────────────
 EXPOSE 8000
