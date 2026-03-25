@@ -30,7 +30,8 @@ app = FastAPI(
 # Update ALLOWED_ORIGINS when deploying to production.
 default_origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "exp://192.168.29.106:8081",
+    "http://localhost:8081"
     "https://loopify3.vercel.app",
 ]
 

@@ -30,7 +30,8 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
     """
     Log a checkin for a loop.
     - Defaults to today's date if not specified.
-    - Prevents duplicate checkins for the same loop + date.
+    - Prevents duplicate boolean checkins for the same loop + date.
+    - Number and duration loops accumulate value in the same daily checkin.
     - Triggers streak recalculation after insert.
     """
     checkin_date = body.date or date.today()
@@ -38,7 +39,7 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
     # 1. Verify loop ownership
     loop_res = (
         supabase.table("loops")
-        .select("id, target_type")
+        .select("id, target_type, target_value")
         .eq("id", body.loop_id)
         .eq("user_id", user_id)
         .single()
@@ -47,49 +48,124 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
     if not loop_res.data:
         raise HTTPException(status_code=404, detail="Loop not found or unauthorized.")
 
-    # 2. Check for duplicate checkin
-    duplicate = (
+    loop = loop_res.data
+    target_type = loop["target_type"]
+    target_value = float(loop["target_value"] or 0)
+
+    # 2. Check for existing checkin today
+    existing_checkin_res = (
         supabase.table("checkins")
-        .select("id")
+        .select("id, value, note, completed")
         .eq("loop_id", body.loop_id)
+        .eq("user_id", user_id)
         .eq("date", str(checkin_date))
         .execute()
     )
-    if duplicate.data:
+    existing_checkin = (
+        existing_checkin_res.data[0]
+        if existing_checkin_res.data
+        else None
+    )
+
+    if target_type == "boolean" and existing_checkin:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Already checked in for this loop today.",
         )
 
-    # 3. Insert checkin
-    payload = {
-        "loop_id": body.loop_id,
-        "user_id": user_id,
-        "date": str(checkin_date),
-        "value": body.value,
-        "note": body.note,
-        "completed": True,
-    }
-    res = supabase.table("checkins").insert(payload).execute()
+    checkin = None
 
-    if not res.data:
-        raise HTTPException(status_code=500, detail="Failed to save checkin.")
+    if target_type in {"number", "duration"}:
+        if target_value <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Numeric and duration loops need a target value greater than zero.",
+            )
 
-    checkin = res.data[0]
+        increment_value = float(body.value if body.value is not None else 1)
 
-    # 4. Recalculate streak for this loop
+        if increment_value <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Checkin value must be greater than zero.",
+            )
+
+        if existing_checkin:
+            current_value = float(existing_checkin["value"] or 0)
+
+            if existing_checkin["completed"] and current_value >= target_value:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Today's target is already completed for this loop.",
+                )
+
+            next_value = min(current_value + increment_value, target_value)
+            completed = next_value >= target_value
+            updates = {
+                "value": next_value,
+                "completed": completed,
+            }
+
+            if body.note is not None:
+                updates["note"] = body.note
+
+            update_res = (
+                supabase.table("checkins")
+                .update(updates)
+                .eq("id", existing_checkin["id"])
+                .eq("user_id", user_id)
+                .execute()
+            )
+
+            if not update_res.data:
+                raise HTTPException(status_code=500, detail="Failed to update checkin progress.")
+
+            checkin = update_res.data[0]
+        else:
+            starting_value = min(increment_value, target_value)
+            payload = {
+                "loop_id": body.loop_id,
+                "user_id": user_id,
+                "date": str(checkin_date),
+                "value": starting_value,
+                "note": body.note,
+                "completed": starting_value >= target_value,
+            }
+            insert_res = supabase.table("checkins").insert(payload).execute()
+
+            if not insert_res.data:
+                raise HTTPException(status_code=500, detail="Failed to save checkin.")
+
+            checkin = insert_res.data[0]
+    else:
+        payload = {
+            "loop_id": body.loop_id,
+            "user_id": user_id,
+            "date": str(checkin_date),
+            "value": body.value,
+            "note": body.note,
+            "completed": True,
+        }
+        insert_res = supabase.table("checkins").insert(payload).execute()
+
+        if not insert_res.data:
+            raise HTTPException(status_code=500, detail="Failed to save checkin.")
+
+        checkin = insert_res.data[0]
+
+    # 3. Recalculate streak for this loop
     streak_data = await recalculate_streak(body.loop_id)
 
-    # 5. Update loop stats
+    # 4. Update loop stats
     supabase.table("loops").update({
         "current_streak": streak_data["current_streak"],
         "best_streak": streak_data["best_streak"],
         "total_checkins": streak_data["total_checkins"],
-        "last_checkin_date": str(checkin_date),
+        "last_checkin_date": streak_data["last_checkin_date"],
     }).eq("id", body.loop_id).execute()
 
     return {
-        "message": "Checked in!",
+        "message": "Checked in!" if checkin["completed"] else "Progress updated!",
         "checkin": checkin,
         "streak": streak_data,
     }
@@ -132,13 +208,13 @@ async def get_todays_checkins(user_id: str = Depends(get_current_user)):
     today = str(date.today())
     res = (
         supabase.table("checkins")
-        .select("loop_id, value, note")
+        .select("id, loop_id, value, note, completed")
         .eq("user_id", user_id)
         .eq("date", today)
         .execute()
     )
     # Return as a set-like dict keyed by loop_id for fast frontend lookup
-    completed_map = {c["loop_id"]: c for c in res.data}
+    completed_map = {c["loop_id"]: c for c in (res.data or [])}
     return {"date": today, "completed": completed_map}
 
 
