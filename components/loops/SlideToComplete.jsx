@@ -1,244 +1,297 @@
-"use client";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, PanResponder, Platform, StyleSheet, Text, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import useAppTheme from "../../lib/hooks/useAppTheme";
 
-import { useState, useRef, useCallback } from "react";
+function withOpacity(color, opacity = "22") {
+  if (typeof color !== "string" || !color.startsWith("#")) {
+    return color || "#72A6FF";
+  }
 
-/**
- * SlideToComplete — gamified slide-to-check-in component.
- *
- * Props:
- *   loopId      – loop ID
- *   isChecked   – already completed today
- *   onCheckin   – async (loopId) => void
- *   compact     – renders inline mini-rail (for LoopCard rows)
- *   color       – accent color (hex), defaults to purple
- */
+  if (color.length === 7) {
+    return `${color}${opacity}`;
+  }
+
+  return color;
+}
+
+const SYSTEM_FONT_FAMILY = Platform.select({
+  ios: "System",
+  android: "sans-serif",
+  default: "system-ui",
+});
+
 export default function SlideToComplete({
-  loopId,
-  isChecked,
-  onCheckin,
-  compact = false,
-  color = "#7c6cfc",
+  onComplete,
+  isCompleted,
+  progressPercent = 0,
+  trackLabel = "Slide to Complete",
+  progressLabel = "",
+  completionLabel = "Target reached for today",
+  accentColor = "#72A6FF",
+  disabled = false,
 }) {
-  const railRef = useRef(null);
-  const [progress, setProgress] = useState(0);     // 0–1
-  const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [justCompleted, setJustCompleted] = useState(false);
+  const { theme, isDark } = useAppTheme();
+  const styles = createStyles(theme, isDark);
+  const pan = useRef(new Animated.ValueXY()).current;
+  const fadeAnim = useRef(new Animated.Value(isCompleted ? 1 : 0)).current;
+  const scaleAnim = useRef(new Animated.Value(isCompleted ? 1 : 0.5)).current;
+  const isCompletedRef = useRef(isCompleted);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const done = isChecked || justCompleted;
-  const THRESHOLD = 0.85;
+  const screenWidth = Dimensions.get("window").width;
+  const maxSlide = screenWidth - 48 - 64;
+  const clampedProgress = Math.min(Math.max(progressPercent, 0), 100);
 
-  const handlePointerDown = useCallback((e) => {
-    if (done || loading) return;
-    e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setDragging(true);
-    setProgress(0);
-  }, [done, loading]);
-
-  const handlePointerMove = useCallback((e) => {
-    if (!dragging || done || loading) return;
-    const rail = railRef.current;
-    if (!rail) return;
-
-    const rect = rail.getBoundingClientRect();
-    const thumbSize = compact ? 28 : 40;
-    const maxTravel = rect.width - thumbSize;
-    const x = e.clientX - rect.left - thumbSize / 2;
-    const pct = Math.max(0, Math.min(x / maxTravel, 1));
-    setProgress(pct);
-  }, [dragging, done, loading, compact]);
-
-  const handlePointerUp = useCallback(async () => {
-    if (!dragging) return;
-    setDragging(false);
-
-    if (progress >= THRESHOLD) {
-      // Trigger checkin
-      setProgress(1);
-      setLoading(true);
-      await onCheckin(loopId);
-      setLoading(false);
-      setJustCompleted(true);
-      // Done state persists — no reset
-    } else {
-      // Spring back to start
-      setProgress(0);
-    }
-  }, [dragging, progress, onCheckin, loopId]);
-
-  // ── DONE STATE ──────────────────────────────────────────────
-  if (done) {
-    if (compact) {
-      return (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-green-500/10 border border-green-500/20 shrink-0 animate-scale-in">
-          <span className="text-green-400 text-xs">✓</span>
-          <span className="text-green-400 text-[11px] font-medium">Done</span>
-        </div>
-      );
-    }
-    return (
-      <div className="relative w-full h-12 rounded-2xl bg-green-500/10 border border-green-500/20 flex items-center justify-center gap-2 overflow-hidden animate-scale-in">
-        <span className="text-green-400 text-base">✓</span>
-        <span className="text-green-400 text-sm font-semibold">Completed!</span>
-        {/* Confetti dots */}
-        {justCompleted && (
-          <>
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-2 h-2 rounded-full animate-pulse"
-                style={{
-                  background: ['#7c6cfc', '#5eead4', '#fb923c', '#f472b6', '#4ade80', '#facc15'][i],
-                  left: `${15 + i * 14}%`,
-                  top: `${20 + (i % 3) * 25}%`,
-                  animationDelay: `${i * 100}ms`,
-                  animationDuration: '0.8s',
-                }}
-              />
-            ))}
-          </>
-        )}
-      </div>
-    );
+  function resetThumb() {
+    Animated.spring(pan, {
+      toValue: { x: 0, y: 0 },
+      useNativeDriver: false,
+    }).start();
   }
 
-  // ── COMPACT RAIL ────────────────────────────────────────────
-  if (compact) {
-    const thumbSize = 32;
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => !isCompleted && !isSubmitting && !disabled,
+    onMoveShouldSetPanResponder: () => !isCompleted && !isSubmitting && !disabled,
+    onPanResponderMove: Animated.event([null, { dx: pan.x }], { useNativeDriver: false }),
+    onPanResponderRelease: (event, gesture) => {
+      if (gesture.dx > maxSlide * 0.6) {
+        setIsSubmitting(true);
+
+        Animated.timing(pan, {
+          toValue: { x: maxSlide, y: 0 },
+          duration: 90,
+          useNativeDriver: false,
+        }).start();
+
+        void (async () => {
+          let result = null;
+
+          try {
+            result = await onComplete?.();
+          } finally {
+            if (!result?.success && !isCompletedRef.current) {
+              resetThumb();
+            }
+
+            if (!isCompletedRef.current) {
+              setIsSubmitting(false);
+            }
+          }
+
+          if (result?.success && !isCompletedRef.current) {
+            resetThumb();
+            setIsSubmitting(false);
+          }
+        })();
+      } else {
+        resetThumb();
+      }
+    },
+  });
+
+  useEffect(() => {
+    isCompletedRef.current = isCompleted;
+  }, [isCompleted]);
+
+  useEffect(() => {
+    if (isCompleted) {
+      setIsSubmitting(false);
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      return;
+    }
+
+    if (!isSubmitting) {
+      pan.setValue({ x: 0, y: 0 });
+    }
+
+    fadeAnim.setValue(0);
+    scaleAnim.setValue(0.5);
+  }, [fadeAnim, isCompleted, isSubmitting, pan, scaleAnim]);
+
+  if (isCompleted) {
     return (
-      <div
-        ref={railRef}
-        className="relative w-full h-9 rounded-full bg-white/[0.04] border border-white/[0.08] cursor-pointer overflow-hidden shrink-0 select-none touch-none"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+      <View
+        style={[
+          styles.completedContainer,
+          {
+            borderColor: withOpacity(accentColor, "55"),
+            shadowColor: accentColor,
+          },
+        ]}
       >
-        {/* Progress fill */}
-        <div
-          className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-75"
-          style={{
-            width: `${progress * 100}%`,
-            background: `linear-gradient(90deg, ${color}33, ${color}88)`,
-          }}
-        />
-
-        {/* Shimmer text */}
-        {!dragging && progress === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-zinc-500 font-medium tracking-widest uppercase animate-shimmer"
-              style={{
-                backgroundImage: `linear-gradient(90deg, #52525b 0%, #a1a1aa 50%, #52525b 100%)`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundSize: '200% auto',
-              }}
-            >
-              Slide to complete →
-            </span>
-          </div>
-        )}
-
-        {/* Progress text (while dragging) */}
-        {dragging && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className={`text-[10px] font-bold transition-colors ${
-              progress >= THRESHOLD ? 'text-green-400' : 'text-zinc-500'
-            }`}>
-              {progress >= THRESHOLD ? 'Release!' : `${Math.round(progress * 100)}%`}
-            </span>
-          </div>
-        )}
-
-        {/* Thumb */}
-        <div
-          className={`absolute top-1/2 -translate-y-1/2 rounded-full flex items-center justify-center text-xs transition-shadow duration-200 ${
-            dragging ? 'shadow-lg' : ''
-          }`}
-          style={{
-            width: thumbSize,
-            height: thumbSize,
-            left: `${Math.max(2, progress * (railRef.current ? railRef.current.offsetWidth - thumbSize - 2 : 0))}px`,
-            background: `linear-gradient(135deg, ${color}, ${color}cc)`,
-            boxShadow: dragging ? `0 0 16px ${color}66` : `0 0 8px ${color}33`,
-            transition: dragging ? 'none' : 'left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s',
-          }}
+        <Animated.View
+          style={[
+            styles.completedContent,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
+            },
+          ]}
         >
-          <span className="text-white text-xs">{progress >= THRESHOLD ? '✓' : '→'}</span>
-        </div>
-      </div>
+          <View style={[styles.checkIconContainer, { backgroundColor: accentColor }]}>
+            <Feather name="check" size={16} color={theme.accentContrast} />
+          </View>
+          <View>
+            <Text style={[styles.masteredText, { color: accentColor }]}>{completionLabel}</Text>
+            {!!progressLabel && <Text style={styles.completedSubtext}>{progressLabel}</Text>}
+          </View>
+        </Animated.View>
+      </View>
     );
   }
 
-  // ── FULL-SIZE RAIL ──────────────────────────────────────────
-  const fullThumb = 40;
   return (
-    <div
-      ref={railRef}
-      className="relative w-full h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] cursor-pointer overflow-hidden select-none touch-none"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    >
-      {/* Progress fill */}
-      <div
-        className="absolute inset-y-0 left-0 rounded-2xl transition-[width] duration-75"
-        style={{
-          width: `${progress * 100}%`,
-          background: `linear-gradient(90deg, ${color}22, ${color}66)`,
-        }}
+    <View style={styles.trackContainer}>
+      <View
+        style={[
+          styles.progressFill,
+          {
+            width: `${clampedProgress}%`,
+            backgroundColor: withOpacity(accentColor, "26"),
+          },
+        ]}
       />
 
-      {/* Guide text */}
-      {!dragging && progress === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span
-            className="text-xs text-zinc-500 font-medium tracking-widest uppercase animate-shimmer"
-            style={{
-              backgroundImage: `linear-gradient(90deg, #52525b 0%, #d4d4d8 50%, #52525b 100%)`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundSize: '200% auto',
-            }}
-          >
-            Slide to complete →
-          </span>
-        </div>
-      )}
+      <View style={styles.trackTextWrap}>
+        <Text style={styles.trackText}>{trackLabel}</Text>
+        {!!progressLabel && <Text style={styles.progressText}>{progressLabel}</Text>}
+      </View>
 
-      {/* Progress text (while dragging) */}
-      {dragging && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <span className={`text-xs font-bold transition-colors ${
-            progress >= THRESHOLD ? 'text-green-400' : 'text-zinc-500'
-          }`}>
-            {progress >= THRESHOLD ? 'Release to complete!' : `${Math.round(progress * 100)}%`}
-          </span>
-        </div>
-      )}
-
-      {/* Thumb */}
-      <div
-        className={`absolute top-1/2 -translate-y-1/2 rounded-xl flex items-center justify-center transition-shadow ${
-          dragging ? 'scale-105' : ''
-        }`}
-        style={{
-          width: fullThumb,
-          height: fullThumb,
-          left: `${Math.max(4, progress * (railRef.current ? railRef.current.offsetWidth - fullThumb - 4 : 0))}px`,
-          background: `linear-gradient(135deg, ${color}, ${color}bb)`,
-          boxShadow: dragging
-            ? `0 0 24px ${color}88, 0 0 48px ${color}33`
-            : `0 0 12px ${color}44`,
-          transition: dragging ? 'none' : 'left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s, transform 0.2s',
-        }}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.thumb,
+          {
+            backgroundColor: accentColor,
+            transform: [
+              {
+                translateX: pan.x.interpolate({
+                  inputRange: [0, maxSlide],
+                  outputRange: [0, maxSlide],
+                  extrapolate: "clamp",
+                }),
+              },
+            ],
+            opacity: isSubmitting || disabled ? 0.82 : 1,
+          },
+        ]}
       >
-        <span className="text-white text-sm font-bold">
-          {loading ? '⏳' : progress >= THRESHOLD ? '✓' : '→'}
-        </span>
-      </div>
-    </div>
+        <Feather
+          name={isSubmitting ? "check" : "chevron-right"}
+          size={isSubmitting ? 20 : 24}
+          color={theme.accentContrast}
+        />
+      </Animated.View>
+    </View>
   );
+}
+
+function createStyles(theme, isDark) {
+  return StyleSheet.create({
+    completedContainer: {
+      backgroundColor: theme.surface,
+      borderRadius: 32,
+      minHeight: 70,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: isDark ? 0.2 : 0.12,
+      shadowRadius: 10,
+      elevation: 5,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+    },
+    completedContent: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    checkIconContainer: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: 12,
+    },
+    masteredText: {
+      fontFamily: SYSTEM_FONT_FAMILY,
+      fontWeight: "700",
+      fontSize: 15,
+      letterSpacing: 0.3,
+    },
+    completedSubtext: {
+      color: theme.textSoft,
+      fontFamily: SYSTEM_FONT_FAMILY,
+      fontSize: 11,
+      fontWeight: "600",
+      marginTop: 2,
+    },
+    trackContainer: {
+      backgroundColor: theme.surface,
+      borderRadius: 32,
+      height: 74,
+      justifyContent: "center",
+      paddingHorizontal: 8,
+      position: "relative",
+      borderColor: theme.border,
+      borderWidth: 1,
+      overflow: "hidden",
+    },
+    progressFill: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 0,
+    },
+    trackTextWrap: {
+      position: "absolute",
+      width: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: 64,
+    },
+    trackText: {
+      textAlign: "center",
+      color: theme.text,
+      fontFamily: SYSTEM_FONT_FAMILY,
+      fontSize: 11,
+      fontWeight: "700",
+      letterSpacing: 1.3,
+      textTransform: "uppercase",
+    },
+    progressText: {
+      textAlign: "center",
+      color: theme.textSoft,
+      fontFamily: SYSTEM_FONT_FAMILY,
+      fontSize: 11,
+      fontWeight: "600",
+      marginTop: 4,
+    },
+    thumb: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+  });
 }
