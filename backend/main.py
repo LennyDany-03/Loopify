@@ -29,10 +29,17 @@ app = FastAPI(
 
 # Update ALLOWED_ORIGINS when deploying to production.
 default_origins = [
+    # Local development
     "http://localhost:3000",
+    "http://localhost:8081",
     "exp://192.168.1.12:8081",
-    "http://localhost:8081"
+    "http://192.168.1.12:8081",
+
+    # Production frontend
     "https://loopify3.vercel.app",
+
+    # (Optional but useful for Expo builds)
+    "https://*.expo.dev",
 ]
 
 env_origins = os.getenv("ALLOWED_ORIGINS", "")
