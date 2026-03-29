@@ -10,10 +10,10 @@ import useAuthStore from "../../lib/store/useAuthStore";
 import useLoopStore from "../../lib/store/useLoopStore";
 import useReminderStore from "../../lib/store/useReminderStore";
 import {
-  enableDailyLoopReminderAsync,
-  formatReminderTime,
-  getLoopReminderStatus,
-  syncDailyLoopReminderAsync,
+  enableHourlyLoopReminderAsync,
+  getHourlyLoopReminderStatus,
+  sendTestHourlyLoopReminderAsync,
+  syncHourlyLoopReminderAsync,
 } from "../../lib/notifications/dailyReminder";
 import useAppTheme from "../../lib/hooks/useAppTheme";
 import { withOpacity } from "../../lib/theme";
@@ -112,8 +112,7 @@ export default function SettingsScreen() {
   const fetchSummary = useLoopStore((state) => state.fetchSummary);
   const fetchTodayCheckins = useLoopStore((state) => state.fetchTodayCheckins);
   const initializeReminder = useReminderStore((state) => state.initialize);
-  const dailyReminder = useReminderStore((state) => state.enabled);
-  const reminderTime = useReminderStore((state) => state.reminderTime);
+  const hourlyReminder = useReminderStore((state) => state.enabled);
   const isReminderReady = useReminderStore((state) => state.isReady);
   const isReminderUpdating = useReminderStore((state) => state.isUpdating);
   const setReminderEnabled = useReminderStore((state) => state.setEnabled);
@@ -124,6 +123,7 @@ export default function SettingsScreen() {
 
   const [isHealthRefreshing, setIsHealthRefreshing] = useState(false);
   const [isThemeUpdating, setIsThemeUpdating] = useState(false);
+  const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
 
   useEffect(() => {
     void initializeReminder(user);
@@ -156,35 +156,33 @@ export default function SettingsScreen() {
   );
   const accountHealthBadge = `${Math.round(accountHealth.score)}%`;
   const reminderStatus = useMemo(
-    () => getLoopReminderStatus({ loops, todayCheckins }),
+    () => getHourlyLoopReminderStatus({ loops, todayCheckins }),
     [loops, todayCheckins]
   );
 
   const reminderDescription = useMemo(() => {
-    const readableTime = formatReminderTime(reminderTime);
-
     if (!isReminderReady) {
       return "Loading your reminder settings...";
     }
 
-    if (!dailyReminder) {
-      return `Send motivation at ${readableTime} when loops are still unfinished.`;
+    if (!hourlyReminder) {
+      return "Get a motivational nudge every hour until today's analysis reaches 100%.";
     }
 
     if (!loops.length) {
-      return `Reminder is on for ${readableTime}. Create your first loop to start receiving nudges.`;
+      return "Hourly reminders are on. Create your first loop to start the 100% push.";
     }
 
     if (reminderStatus.shouldNotify) {
       const loopLabel = reminderStatus.remainingLoops === 1 ? "loop is" : "loops are";
 
-      return `${readableTime} reminder is armed because ${reminderStatus.remainingLoops} ${loopLabel} still open today.`;
+      return `${reminderStatus.completionRate}% complete today. We will send an hourly push while ${reminderStatus.remainingLoops} ${loopLabel} still open so your analysis can reach 100%.`;
     }
 
-    return `Reminder is active for ${readableTime}. We only notify when 0-2 loops are done and some are still left.`;
-  }, [dailyReminder, isReminderReady, loops.length, reminderStatus, reminderTime]);
+    return "Hourly reminders are on, but today's analysis is already at 100%. No extra nudges right now.";
+  }, [hourlyReminder, isReminderReady, loops.length, reminderStatus]);
 
-  const handleDailyReminderToggle = useCallback(
+  const handleHourlyReminderToggle = useCallback(
     (nextValue) => {
       void (async () => {
         if (!user?.id) {
@@ -193,12 +191,11 @@ export default function SettingsScreen() {
 
         if (!nextValue) {
           await setReminderEnabled(false);
-          await syncDailyLoopReminderAsync({ enabled: false });
+          await syncHourlyLoopReminderAsync({ enabled: false });
           return;
         }
 
-        const result = await enableDailyLoopReminderAsync({
-          reminderTime,
+        const result = await enableHourlyLoopReminderAsync({
           loops,
           todayCheckins,
         });
@@ -208,8 +205,8 @@ export default function SettingsScreen() {
           Alert.alert(
             result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
             result.reason === "module-unavailable"
-              ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try turning Daily Reminder on again."
-              : "Allow Loopify notifications on your device to receive daily motivation for unfinished loops."
+              ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try turning Hourly Reminder on again."
+              : "Allow Loopify notifications on your device to receive hourly motivation until today's analysis reaches 100%."
           );
           return;
         }
@@ -217,8 +214,31 @@ export default function SettingsScreen() {
         await setReminderEnabled(true);
       })();
     },
-    [loops, reminderTime, setReminderEnabled, todayCheckins, user?.id]
+    [loops, setReminderEnabled, todayCheckins, user?.id]
   );
+
+  const handleSendTestNotification = useCallback(() => {
+    void (async () => {
+      setIsSendingTestNotification(true);
+      const result = await sendTestHourlyLoopReminderAsync();
+      setIsSendingTestNotification(false);
+
+      if (!result.success) {
+        Alert.alert(
+          result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
+          result.reason === "module-unavailable"
+            ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try the test again."
+            : "Allow Loopify notifications on your device, then send the test again."
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Test notification sent",
+        "You should see a Loopify notification right away. For the most realistic check, background or lock the phone before testing."
+      );
+    })();
+  }, []);
 
   const handleThemeSelection = useCallback(
     (nextTheme) => {
@@ -365,7 +385,7 @@ export default function SettingsScreen() {
           <View className="flex-row items-start p-5">
             <View className="flex-1 mr-4">
               <Text className="font-bold text-[15px]" style={{ color: theme.text }}>
-                Daily Reminder
+                Hourly Reminder
               </Text>
               <Text className="text-[11px] mt-1 font-medium leading-[16px]" style={{ color: theme.textMuted }}>
                 {reminderDescription}
@@ -374,17 +394,39 @@ export default function SettingsScreen() {
 
             <View className="pt-0.5">
               <Switch
-                value={dailyReminder}
-                onValueChange={handleDailyReminderToggle}
+                value={hourlyReminder}
+                onValueChange={handleHourlyReminderToggle}
                 disabled={!isReminderReady || isReminderUpdating}
                 trackColor={{
                   false: isDark ? "#1E222E" : "#D0D9E8",
                   true: theme.accentSoft,
                 }}
-                thumbColor={dailyReminder ? theme.accentContrast : isDark ? "#8E93A6" : "#6E7B91"}
+                thumbColor={hourlyReminder ? theme.accentContrast : isDark ? "#8E93A6" : "#6E7B91"}
                 ios_backgroundColor={isDark ? "#1E222E" : "#D0D9E8"}
               />
             </View>
+          </View>
+
+          <View className="px-5 pb-5">
+            <TouchableOpacity
+              onPress={handleSendTestNotification}
+              disabled={!isReminderReady || isReminderUpdating || isSendingTestNotification}
+              activeOpacity={0.8}
+              className="rounded-[18px] border px-4 py-3 flex-row items-center justify-center gap-2"
+              style={{
+                backgroundColor: withOpacity(theme.accent, isDark ? 0.14 : 0.08),
+                borderColor: withOpacity(theme.accent, 0.18),
+              }}
+            >
+              <Feather name="bell" size={15} color={theme.accent} />
+              <Text className="text-[12px] font-bold tracking-[0.4px]" style={{ color: theme.accent }}>
+                {isSendingTestNotification ? "Sending Test..." : "Send Test Notification"}
+              </Text>
+            </TouchableOpacity>
+
+            <Text className="text-[11px] mt-3 font-medium leading-[16px]" style={{ color: theme.textMuted }}>
+              Best check: turn the hourly toggle on, tap the test button, then lock the phone or move the app to the background to see the alert like a real reminder.
+            </Text>
           </View>
         </View>
 
