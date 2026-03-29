@@ -9,6 +9,7 @@ import { useAuth } from "../../lib/hooks/useAuth";
 import useAuthStore from "../../lib/store/useAuthStore";
 import useLoopStore from "../../lib/store/useLoopStore";
 import useReminderStore from "../../lib/store/useReminderStore";
+import NotificationStatusModal from "./NotificationStatusModal";
 import {
   enableHourlyLoopReminderAsync,
   getHourlyLoopReminderStatus,
@@ -124,6 +125,14 @@ export default function SettingsScreen() {
   const [isHealthRefreshing, setIsHealthRefreshing] = useState(false);
   const [isThemeUpdating, setIsThemeUpdating] = useState(false);
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
+  const [notificationModal, setNotificationModal] = useState({
+    isVisible: false,
+    title: "",
+    message: "",
+    tone: "accent",
+    icon: "bell",
+    actionLabel: "OK",
+  });
 
   useEffect(() => {
     void initializeReminder(user);
@@ -182,6 +191,24 @@ export default function SettingsScreen() {
     return "Hourly reminders are on, but today's analysis is already at 100%. No extra nudges right now.";
   }, [hourlyReminder, isReminderReady, loops.length, reminderStatus]);
 
+  const closeNotificationModal = useCallback(() => {
+    setNotificationModal((current) => ({
+      ...current,
+      isVisible: false,
+    }));
+  }, []);
+
+  const showNotificationModal = useCallback((config) => {
+    setNotificationModal({
+      isVisible: true,
+      title: config.title,
+      message: config.message,
+      tone: config.tone || "accent",
+      icon: config.icon || "bell",
+      actionLabel: config.actionLabel || "OK",
+    });
+  }, []);
+
   const handleHourlyReminderToggle = useCallback(
     (nextValue) => {
       void (async () => {
@@ -202,19 +229,22 @@ export default function SettingsScreen() {
 
         if (!result.success) {
           await setReminderEnabled(false);
-          Alert.alert(
-            result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
-            result.reason === "module-unavailable"
-              ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try turning Hourly Reminder on again."
-              : "Allow Loopify notifications on your device to receive hourly motivation until today's analysis reaches 100%."
-          );
+          showNotificationModal({
+            title: result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
+            message:
+              result.reason === "module-unavailable"
+                ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try turning Hourly Reminder on again."
+                : "Allow Loopify notifications on your device to receive hourly motivation until today's analysis reaches 100%.",
+            tone: "warning",
+            icon: result.reason === "module-unavailable" ? "alert-triangle" : "bell-off",
+          });
           return;
         }
 
         await setReminderEnabled(true);
       })();
     },
-    [loops, setReminderEnabled, todayCheckins, user?.id]
+    [loops, setReminderEnabled, showNotificationModal, todayCheckins, user?.id]
   );
 
   const handleSendTestNotification = useCallback(() => {
@@ -224,21 +254,27 @@ export default function SettingsScreen() {
       setIsSendingTestNotification(false);
 
       if (!result.success) {
-        Alert.alert(
-          result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
-          result.reason === "module-unavailable"
-            ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try the test again."
-            : "Allow Loopify notifications on your device, then send the test again."
-        );
+        showNotificationModal({
+          title: result.reason === "module-unavailable" ? "Rebuild needed" : "Notifications are blocked",
+          message:
+            result.reason === "module-unavailable"
+              ? "This app build does not include expo-notifications yet. Rebuild the dev client or app, then try the test again."
+              : "Allow Loopify notifications on your device, then send the test again.",
+          tone: "warning",
+          icon: result.reason === "module-unavailable" ? "alert-triangle" : "bell-off",
+        });
         return;
       }
 
-      Alert.alert(
-        "Test notification sent",
-        "You should see a Loopify notification right away. For the most realistic check, background or lock the phone before testing."
-      );
+      showNotificationModal({
+        title: "Test notification sent",
+        message:
+          "You should see a Loopify notification right away. For the most realistic check, background or lock the phone before testing.",
+        tone: "accent",
+        icon: "bell",
+      });
     })();
-  }, []);
+  }, [showNotificationModal]);
 
   const handleThemeSelection = useCallback(
     (nextTheme) => {
@@ -616,6 +652,16 @@ export default function SettingsScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <NotificationStatusModal
+        isVisible={notificationModal.isVisible}
+        onClose={closeNotificationModal}
+        title={notificationModal.title}
+        message={notificationModal.message}
+        tone={notificationModal.tone}
+        icon={notificationModal.icon}
+        actionLabel={notificationModal.actionLabel}
+      />
     </SafeAreaView>
   );
 }
