@@ -5,6 +5,8 @@ import re
 from postgrest.exceptions import APIError
 from app.services.supabase_client import supabase
 from app.middleware.auth_guard import get_current_user
+from app.dependencies.timezone import get_request_timezone
+from app.services.streak_service import normalize_timezone_name, resolve_timezone_name
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -84,7 +86,10 @@ def fetch_profile_row(user_id: str) -> dict:
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/me")
-async def get_my_profile(user_id: str = Depends(get_current_user)):
+async def get_my_profile(
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Get the authenticated user's profile.
     """
@@ -101,6 +106,13 @@ async def get_my_profile(user_id: str = Depends(get_current_user)):
     )
     if derived_username and derived_username != profile.get("username"):
         updates["username"] = derived_username
+
+    normalized_request_timezone = normalize_timezone_name(request_timezone)
+    if normalized_request_timezone and not profile.get("timezone"):
+        resolved_timezone = resolve_timezone_name(timezone_name=normalized_request_timezone)
+
+        if resolved_timezone == normalized_request_timezone:
+            updates["timezone"] = resolved_timezone
 
     if updates:
         try:

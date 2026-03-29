@@ -5,6 +5,7 @@ from datetime import date, datetime
 from app.services.supabase_client import supabase
 from app.services.streak_service import get_server_today, recalculate_streak
 from app.middleware.auth_guard import get_current_user
+from app.dependencies.timezone import get_request_timezone
 
 router = APIRouter(prefix="/checkins", tags=["Checkins"])
 
@@ -26,7 +27,11 @@ class CheckinUpdate(BaseModel):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current_user)):
+async def create_checkin(
+    body: CheckinCreate,
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Log a checkin for a loop.
     - Defaults to today's date if not specified.
@@ -34,7 +39,8 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
     - Number and duration loops accumulate value in the same daily checkin.
     - Triggers streak recalculation after insert.
     """
-    checkin_date = body.date or get_server_today()
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
+    checkin_date = body.date or today
 
     # 1. Verify loop ownership
     loop_res = (
@@ -154,7 +160,7 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
         checkin = insert_res.data[0]
 
     # 3. Recalculate streak for this loop
-    streak_data = await recalculate_streak(body.loop_id)
+    streak_data = await recalculate_streak(body.loop_id, today=today)
 
     # 4. Update loop stats
     supabase.table("loops").update({
@@ -168,7 +174,7 @@ async def create_checkin(body: CheckinCreate, user_id: str = Depends(get_current
         "message": "Checked in!" if checkin["completed"] else "Progress updated!",
         "checkin": checkin,
         "streak": streak_data,
-        "server_date": str(get_server_today()),
+        "server_date": str(today),
     }
 
 
@@ -201,12 +207,15 @@ async def get_checkins_for_loop(
 
 
 @router.get("/today/all")
-async def get_todays_checkins(user_id: str = Depends(get_current_user)):
+async def get_todays_checkins(
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Get all checkins the user has made today.
     Used by dashboard to highlight already-completed loops.
     """
-    today = str(get_server_today())
+    today = str(get_server_today(user_id=user_id, timezone_name=request_timezone))
     res = (
         supabase.table("checkins")
         .select("id, loop_id, value, note, completed")
@@ -247,11 +256,17 @@ async def update_checkin(
 
 
 @router.delete("/{checkin_id}")
-async def delete_checkin(checkin_id: str, user_id: str = Depends(get_current_user)):
+async def delete_checkin(
+    checkin_id: str,
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Delete a checkin (undo a log).
     Also recalculates streak after deletion.
     """
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
+
     # Fetch checkin to get loop_id before deleting
     fetch = (
         supabase.table("checkins")
@@ -269,7 +284,7 @@ async def delete_checkin(checkin_id: str, user_id: str = Depends(get_current_use
     supabase.table("checkins").delete().eq("id", checkin_id).execute()
 
     # Recalculate streak after undo
-    streak_data = await recalculate_streak(loop_id)
+    streak_data = await recalculate_streak(loop_id, today=today)
     supabase.table("loops").update({
         "current_streak": streak_data["current_streak"],
         "best_streak": streak_data["best_streak"],
@@ -280,5 +295,5 @@ async def delete_checkin(checkin_id: str, user_id: str = Depends(get_current_use
     return {
         "message": "Checkin deleted",
         "streak": streak_data,
-        "server_date": str(get_server_today()),
+        "server_date": str(today),
     }

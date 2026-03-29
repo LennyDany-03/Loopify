@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.middleware.auth_guard import get_current_user
+from app.dependencies.timezone import get_request_timezone
 from app.services.streak_service import (
     calculate_user_daily_streak,
     get_server_today,
@@ -41,11 +42,14 @@ def _build_recent_weeks(count: int = 12, today: date | None = None) -> list[dict
 
 
 @router.get("/summary")
-async def get_summary(user_id: str = Depends(get_current_user)):
+async def get_summary(
+    user_id: str = Depends(get_current_user),
+    request_timezone: str | None = Depends(get_request_timezone),
+):
     """
     High-level summary card stats for the dashboard.
     """
-    today = get_server_today()
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
     loops_res = (
         supabase.table("loops")
         .select("id, name, icon, current_streak, best_streak, total_checkins, category, last_checkin_date")
@@ -71,11 +75,15 @@ async def get_summary(user_id: str = Depends(get_current_user)):
 
 
 @router.get("/streak/{loop_id}")
-async def get_streak(loop_id: str, user_id: str = Depends(get_current_user)):
+async def get_streak(
+    loop_id: str,
+    user_id: str = Depends(get_current_user),
+    request_timezone: str | None = Depends(get_request_timezone),
+):
     """
     Get current and best streak for a specific loop.
     """
-    today = get_server_today()
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
     res = (
         supabase.table("loops")
         .select("id, name, current_streak, best_streak, total_checkins, last_checkin_date")
@@ -99,13 +107,14 @@ async def get_streak(loop_id: str, user_id: str = Depends(get_current_user)):
 async def get_heatmap(
     loop_id: str,
     year: int = Query(default=None),
-    user_id: str = Depends(get_current_user)
+    user_id: str = Depends(get_current_user),
+    request_timezone: str | None = Depends(get_request_timezone),
 ):
     """
     Returns a year's worth of checkin data formatted for a GitHub-style heatmap.
     Defaults to the current server year.
     """
-    target_year = year or get_server_today().year
+    target_year = year or get_server_today(user_id=user_id, timezone_name=request_timezone).year
     start = date(target_year, 1, 1)
     end = date(target_year, 12, 31)
 
@@ -139,11 +148,15 @@ async def get_heatmap(
 
 
 @router.get("/weekly/{loop_id}")
-async def get_weekly_stats(loop_id: str, user_id: str = Depends(get_current_user)):
+async def get_weekly_stats(
+    loop_id: str,
+    user_id: str = Depends(get_current_user),
+    request_timezone: str | None = Depends(get_request_timezone),
+):
     """
     Returns completed checkin counts grouped into the last 12 server-based weeks.
     """
-    today = get_server_today()
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
     week_entries = _build_recent_weeks(today=today)
     start_date = week_entries[0]["start_date"]
 
@@ -205,12 +218,13 @@ async def get_category_breakdown(user_id: str = Depends(get_current_user)):
 @router.get("/completion-rate")
 async def get_completion_rate(
     days: int = Query(default=30, ge=7, le=365),
-    user_id: str = Depends(get_current_user)
+    user_id: str = Depends(get_current_user),
+    request_timezone: str | None = Depends(get_request_timezone),
 ):
     """
     Overall completion rate for all loops over the last N server-based days.
     """
-    today = get_server_today()
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
     start = today - timedelta(days=days)
 
     loops_res = (

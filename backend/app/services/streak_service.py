@@ -1,9 +1,62 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from app.services.supabase_client import supabase
 
+DEFAULT_TIMEZONE = "Asia/Kolkata"
 
-def get_server_today() -> date:
-    return date.today()
+
+def normalize_timezone_name(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+
+    normalized = value.strip()
+    return normalized or None
+
+
+def get_user_timezone(user_id: str | None) -> str | None:
+    if not user_id:
+        return None
+
+    try:
+        res = (
+            supabase.table("profiles")
+            .select("timezone")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+    except Exception:
+        return None
+
+    profile = res.data or {}
+    return normalize_timezone_name(profile.get("timezone")) if isinstance(profile, dict) else None
+
+
+def resolve_timezone_name(user_id: str | None = None, timezone_name: str | None = None) -> str:
+    for candidate in (
+        normalize_timezone_name(timezone_name),
+        None,
+        DEFAULT_TIMEZONE,
+        "UTC",
+    ):
+        if candidate is None:
+            candidate = get_user_timezone(user_id)
+
+        if not candidate:
+            continue
+
+        try:
+            ZoneInfo(candidate)
+            return candidate
+        except ZoneInfoNotFoundError:
+            continue
+
+    return "UTC"
+
+
+def get_server_today(user_id: str | None = None, timezone_name: str | None = None) -> date:
+    resolved_timezone = resolve_timezone_name(user_id=user_id, timezone_name=timezone_name)
+    return datetime.now(ZoneInfo(resolved_timezone)).date()
 
 
 def _empty_streak_payload() -> dict:
@@ -91,7 +144,12 @@ def calculate_streaks_from_dates(checkin_dates: list[date], today: date | None =
     }
 
 
-async def recalculate_streak(loop_id: str) -> dict:
+async def recalculate_streak(
+    loop_id: str,
+    today: date | None = None,
+    user_id: str | None = None,
+    timezone_name: str | None = None,
+) -> dict:
     """
     Recalculate the streak for a single loop from stored completed check-ins.
     """
@@ -108,7 +166,8 @@ async def recalculate_streak(loop_id: str) -> dict:
         return _empty_streak_payload()
 
     checkin_dates = [date.fromisoformat(row["date"]) for row in res.data]
-    return calculate_streaks_from_dates(checkin_dates, today=get_server_today())
+    active_today = today or get_server_today(user_id=user_id, timezone_name=timezone_name)
+    return calculate_streaks_from_dates(checkin_dates, today=active_today)
 
 
 def get_live_loop_current_streak(loop: dict, today: date | None = None) -> int:
@@ -187,7 +246,7 @@ async def calculate_user_daily_streak(user_id: str, today: date | None = None) -
     }
 
 
-async def recalculate_all_streaks_for_user(user_id: str) -> list[dict]:
+async def recalculate_all_streaks_for_user(user_id: str, timezone_name: str | None = None) -> list[dict]:
     """
     Recalculate streaks for every active loop belonging to a user.
     """
@@ -199,10 +258,11 @@ async def recalculate_all_streaks_for_user(user_id: str) -> list[dict]:
         .execute()
     )
 
+    active_today = get_server_today(user_id=user_id, timezone_name=timezone_name)
     results = []
     for loop in (loops_res.data or []):
         loop_id = loop["id"]
-        streak_data = await recalculate_streak(loop_id)
+        streak_data = await recalculate_streak(loop_id, today=active_today)
 
         supabase.table("loops").update({
             "current_streak": streak_data["current_streak"],

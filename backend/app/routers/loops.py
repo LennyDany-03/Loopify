@@ -4,6 +4,7 @@ from typing import Optional
 from app.services.supabase_client import supabase
 from app.middleware.auth_guard import get_current_user
 from app.services.streak_service import get_server_today, sync_loop_collection, sync_loop_streak_snapshot
+from app.dependencies.timezone import get_request_timezone
 
 router = APIRouter(prefix="/loops", tags=["Loops"])
 
@@ -38,7 +39,10 @@ class LoopUpdate(BaseModel):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @router.get("/")
-async def get_loops(user_id: str = Depends(get_current_user)):
+async def get_loops(
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Get all loops for the authenticated user.
     Returns only active loops by default.
@@ -51,12 +55,17 @@ async def get_loops(user_id: str = Depends(get_current_user)):
         .order("created_at", desc=False)
         .execute()
     )
-    loops = sync_loop_collection(res.data or [], today=get_server_today())
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
+    loops = sync_loop_collection(res.data or [], today=today)
     return {"loops": loops}
 
 
 @router.get("/{loop_id}")
-async def get_loop(loop_id: str, user_id: str = Depends(get_current_user)):
+async def get_loop(
+    loop_id: str,
+    user_id: str = Depends(get_current_user),
+    request_timezone: Optional[str] = Depends(get_request_timezone),
+):
     """
     Get a single loop by ID. Must belong to the authenticated user.
     """
@@ -75,7 +84,8 @@ async def get_loop(loop_id: str, user_id: str = Depends(get_current_user)):
             detail="Loop not found."
         )
 
-    loop = sync_loop_streak_snapshot(res.data, today=get_server_today())
+    today = get_server_today(user_id=user_id, timezone_name=request_timezone)
+    loop = sync_loop_streak_snapshot(res.data, today=today)
     return loop
 
 

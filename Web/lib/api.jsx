@@ -8,10 +8,24 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+function getBrowserTimeZone() {
+  try {
+    return Intl?.DateTimeFormat?.().resolvedOptions?.().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 // Attach token to every request automatically
 api.interceptors.request.use((config) => {
+  config.headers = config.headers ?? {};
+
   const token = getToken();
+  const browserTimeZone = getBrowserTimeZone();
+
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (browserTimeZone) config.headers["X-Timezone"] = browserTimeZone;
+
   return config;
 });
 
