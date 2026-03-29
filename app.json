@@ -62,6 +62,12 @@
         "projectId": "a8e061b9-23d4-4020-8a18-8dcfbbbd62ab"
       }
     },
-    "owner": "lennydany3"
+    "owner": "lennydany3",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a8e061b9-23d4-4020-8a18-8dcfbbbd62ab"
+    }
   }
 }
