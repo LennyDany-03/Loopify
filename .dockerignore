@@ -39,3 +39,6 @@ logs/
 .pytest_cache/
 htmlcov/
 .coverage
+
+# Node modules (for the frontend)
+node_modules/
