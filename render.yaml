@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: loopify-backend
+    env: docker
+    plan: free
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
