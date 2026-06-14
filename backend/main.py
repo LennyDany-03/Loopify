@@ -25,7 +25,7 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
-
+//Testing
 
 # Update ALLOWED_ORIGINS when deploying to production.
 default_origins = [
@@ -34,6 +34,7 @@ default_origins = [
     "http://localhost:8081",
     "exp://192.168.1.12:8081",
     "http://192.168.1.12:8081",
+    "exp+loopify://expo-development-client/?url=http%3A%2F%2F192.168.0.194%3A8081"
 
     # Production frontend
     "https://loopify3.vercel.app",
