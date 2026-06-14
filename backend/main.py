@@ -25,7 +25,7 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
-//Testing
+
 
 # Update ALLOWED_ORIGINS when deploying to production.
 default_origins = [
