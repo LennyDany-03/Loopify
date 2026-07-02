@@ -3,5 +3,5 @@ services:
     name: loopify-backend
     env: docker
     plan: free
-    dockerContext: .
-    dockerfilePath: ./Dockerfile
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
