@@ -16,8 +16,6 @@ The repository is currently in a transition state. Auth is wired end to end, but
 - There are currently no automated tests in the repo
 - The legacy Expo starter README has been removed and replaced with project-specific docs
 
-
-
 ## Project Docs
 
 - [Architecture](/C:/Users/lenny/OneDrive/Documents/Code/native/loopify/docs/ARCHITECTURE.md)
