@@ -33,7 +33,6 @@ The repository is currently in a transition state. Auth is wired end to end, but
 - Supabase
 
 ## Frontend Setup
-//
 1. Install dependencies:
 
 ```bash
