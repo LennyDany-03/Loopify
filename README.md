@@ -23,7 +23,7 @@ The repository is currently in a transition state. Auth is wired end to end, but
 - [Roadmap](/C:/Users/lenny/OneDrive/Documents/Code/native/loopify/docs/ROADMAP.md)
 
 ## Tech Stack
-//
+
 - Expo 54
 - React 19
 - Expo Router
