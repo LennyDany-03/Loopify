@@ -1,0 +1,152 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../screens/achievements/achievements_screen.dart';
+import '../screens/add_edit_habit/add_edit_habit_sheet.dart';
+import '../screens/calendar/calendar_screen.dart';
+import '../screens/habit_detail/habit_detail_screen.dart';
+import '../screens/home/home_screen.dart';
+import '../screens/insights/insights_screen.dart';
+import '../screens/onboarding/onboarding_screen.dart';
+import '../screens/settings/settings_screen.dart';
+import '../screens/shell/tide_shell.dart';
+import '../screens/upgrade/upgrade_sheet.dart';
+import '../theme/tide_motion.dart';
+import '../widgets/tide_sheet.dart';
+
+/// Route names, so no screen has to hardcode a path string.
+abstract final class Routes {
+  static const onboarding = '/onboarding';
+  static const today = '/today';
+  static const history = '/history';
+  static const insights = '/insights';
+  static const settings = '/settings';
+  static const milestones = '/milestones';
+  static const newHabit = '/habit/new';
+  static const upgrade = '/upgrade';
+
+  static String habit(String id) => '/today/habit/$id';
+  static String editHabit(String id) => '/habit/$id/edit';
+}
+
+abstract final class AppRoutes {
+  static final GlobalKey<NavigatorState> _rootKey = GlobalKey<NavigatorState>(
+    debugLabel: 'root',
+  );
+
+  static GoRouter build({required bool startOnboarded}) {
+    return GoRouter(
+      navigatorKey: _rootKey,
+      initialLocation: startOnboarded ? Routes.today : Routes.onboarding,
+      routes: [
+        GoRoute(
+          path: Routes.onboarding,
+          builder: (context, state) => const OnboardingScreen(),
+        ),
+
+        // The four tabs. A branch keeps its own navigator, so pushing habit
+        // detail from Today and then switching tabs and back returns to the
+        // detail screen rather than resetting the tab.
+        StatefulShellRoute(
+          builder: (context, state, shell) => shell,
+          navigatorContainerBuilder: (context, shell, children) =>
+              TideShell(navigationShell: shell, branches: children),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.today,
+                  builder: (context, state) => const HomeScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'habit/:id',
+                      builder: (context, state) => HabitDetailScreen(
+                        habitId: state.pathParameters['id']!,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.history,
+                  builder: (context, state) => const CalendarScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.insights,
+                  builder: (context, state) => const InsightsScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: Routes.settings,
+                  builder: (context, state) => const SettingsScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // Milestones covers the tab bar — it is a destination you arrive at,
+        // not one you browse between.
+        GoRoute(
+          path: Routes.milestones,
+          parentNavigatorKey: _rootKey,
+          builder: (context, state) => const AchievementsScreen(),
+        ),
+
+        // Sheets. Non-opaque so the screen behind stays visible, which is
+        // what makes them read as contextual rather than as a detour.
+        GoRoute(
+          path: Routes.newHabit,
+          parentNavigatorKey: _rootKey,
+          pageBuilder: (context, state) =>
+              _sheet(state, const AddEditHabitSheet(), morph: true),
+        ),
+        GoRoute(
+          path: '/habit/:id/edit',
+          parentNavigatorKey: _rootKey,
+          pageBuilder: (context, state) => _sheet(
+            state,
+            AddEditHabitSheet(habitId: state.pathParameters['id']),
+            morph: true,
+          ),
+        ),
+        GoRoute(
+          path: Routes.upgrade,
+          parentNavigatorKey: _rootKey,
+          pageBuilder: (context, state) => _sheet(state, const UpgradeSheet()),
+        ),
+      ],
+    );
+  }
+
+  /// [morph] picks the FAB-origin growth used by add/edit; everything else
+  /// rises from the bottom edge.
+  static CustomTransitionPage<void> _sheet(
+    GoRouterState state,
+    Widget child, {
+    bool morph = false,
+  }) {
+    return CustomTransitionPage<void>(
+      key: state.pageKey,
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.transparent,
+      transitionDuration: morph ? TideMotion.morph : TideMotion.sheetIn,
+      reverseTransitionDuration: TideMotion.sheetOut,
+      transitionsBuilder: morph
+          ? tideMorphSheetTransition
+          : tideSheetTransition,
+      child: child,
+    );
+  }
+}
