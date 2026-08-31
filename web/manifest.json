@@ -1,6 +1,6 @@
 {
-    "name": "loopify",
-    "short_name": "loopify",
+    "name": "Tide",
+    "short_name": "Tide",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

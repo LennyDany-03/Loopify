@@ -1,0 +1,190 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../config/app_routes.dart';
+import '../../services/models/habit.dart';
+import '../../services/streak_calculator.dart';
+import '../../services/tide_scope.dart';
+import '../../theme/tide_typography.dart';
+import '../../widgets/empty_state.dart';
+import '../../widgets/tide_button.dart';
+import 'widgets/day_complete_overlay.dart';
+import 'widgets/habit_card.dart';
+import 'widgets/habit_context_menu.dart';
+import 'widgets/hero_stat_card.dart';
+import 'widgets/home_header.dart';
+import 'widgets/reordering_habit_list.dart';
+import 'widgets/wave_refresh_indicator.dart';
+
+/// Today — the screen the app opens into and the one that gets used daily.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _dayCompleteTick = 0;
+  bool _wasDayComplete = false;
+
+  /// Seven completion levels for the strip on a habit card, oldest first.
+  List<double> _weekLevels(Habit habit) {
+    final today = DateTime.now();
+    return List<double>.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      if (!habit.isScheduledOn(day)) return 0;
+      if (habit.isFrozenOn(day)) return 0.5;
+      return habit.progressOn(day);
+    });
+  }
+
+  void _log(Habit habit, num amount) {
+    final store = TideScope.read(context);
+    store.log(habit.id, amount: amount);
+    _checkDayComplete();
+  }
+
+  void _freeze(Habit habit) {
+    final store = TideScope.read(context);
+    final spent = store.freeze(habit.id);
+    if (!spent && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'No freezes left on ${habit.name}.',
+            style: TideType.label,
+          ),
+        ),
+      );
+      return;
+    }
+    _checkDayComplete();
+  }
+
+  /// Fires the day-complete moment once, on the transition into a finished
+  /// day — never on a rebuild that happens to find the day already done.
+  void _checkDayComplete() {
+    final summary = TideScope.read(context).today;
+    final complete = summary.isFullyLogged;
+    if (complete && !_wasDayComplete) {
+      setState(() => _dayCompleteTick++);
+    }
+    _wasDayComplete = complete;
+  }
+
+  void _openMenu(Habit habit) {
+    final store = TideScope.read(context);
+    showHabitContextMenu(
+      context,
+      habit: habit,
+      onEdit: () => context.push(Routes.editHabit(habit.id)),
+      onPause: () => store.togglePause(habit.id),
+      onDelete: () => store.deleteHabit(habit.id),
+    );
+  }
+
+  Future<void> _refresh() async {
+    final store = TideScope.read(context);
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    if (mounted) store.sync();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = TideScope.of(context);
+    final habits = store.habits;
+    final summary = store.today;
+    _wasDayComplete = summary.isFullyLogged;
+
+    return Stack(
+      children: [
+        WaveRefreshIndicator(
+          onRefresh: _refresh,
+          child: CustomScrollView(
+            physics: tidePullPhysics,
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  MediaQuery.paddingOf(context).top + 16,
+                  20,
+                  0,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: HomeHeader(
+                    date: DateTime.now(),
+                    onMilestones: () => context.push(Routes.milestones),
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 18)),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverToBoxAdapter(
+                  child: HeroStatCard(
+                    completed: summary.completed,
+                    scheduled: summary.scheduled,
+                    weeklyRate: store.weeklyRate,
+                    bestStreak: store.bestActiveStreak,
+                    dayComplete: summary.isFullyLogged,
+                  ),
+                ),
+              ),
+              if (habits.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: TideEmptyState(
+                    title: 'No habits yet',
+                    body:
+                        'Pick something small and daily. The rhythm matters '
+                        'more than the size.',
+                    action: TideButton(
+                      label: 'Add your first habit',
+                      expand: false,
+                      onPressed: () => context.push(Routes.newHabit),
+                    ),
+                  ),
+                )
+              else ...[
+                const SliverToBoxAdapter(child: SizedBox(height: 26)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverToBoxAdapter(
+                    child: Text('HABITS', style: TideType.sectionHeader),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverToBoxAdapter(
+                    child: ReorderingHabitList(
+                      itemHeight: HabitCard.height,
+                      itemKeys: [for (final habit in habits) habit.id],
+                      itemBuilder: (context, id) {
+                        final habit = store.habitById(id);
+                        if (habit == null) return const SizedBox.shrink();
+                        return HabitCard(
+                          habit: habit,
+                          streak: StreakCalculator.currentStreak(habit),
+                          weekLevels: _weekLevels(habit),
+                          onOpen: () => context.push(Routes.habit(habit.id)),
+                          onMenu: () => _openMenu(habit),
+                          onLog: (amount) => _log(habit, amount),
+                          onFreeze: () => _freeze(habit),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+              // Clears the FAB and the tab bar.
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+            ],
+          ),
+        ),
+        Positioned.fill(child: DayCompleteOverlay(trigger: _dayCompleteTick)),
+      ],
+    );
+  }
+}
