@@ -9,6 +9,7 @@ import '../../theme/tide_motion.dart';
 import '../../theme/tide_typography.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/tide_surface.dart';
+import '../../widgets/tide_tab_bar.dart';
 import '../../widgets/trend_chart.dart';
 import 'widgets/detail_actions.dart';
 import 'widgets/detail_header.dart';
@@ -95,7 +96,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen>
           20,
           MediaQuery.paddingOf(context).top + 16,
           20,
-          130,
+          TideTabBar.reservedHeight(context) + 28,
         ),
         children: [
           DetailHeader(

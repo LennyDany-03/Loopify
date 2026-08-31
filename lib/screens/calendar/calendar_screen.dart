@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/tide_scope.dart';
 import '../../theme/tide_motion.dart';
 import '../../theme/tide_typography.dart';
+import '../../widgets/tide_tab_bar.dart';
 import 'widgets/day_breakdown_sheet.dart';
 import 'widgets/intensity_legend.dart';
 import 'widgets/month_grid.dart';
@@ -46,7 +47,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         20,
         MediaQuery.paddingOf(context).top + 16,
         20,
-        130,
+        TideTabBar.reservedHeight(context) + 28,
       ),
       children: [
         const Text('History', style: TideType.screenTitle),

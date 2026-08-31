@@ -8,6 +8,7 @@ import '../../theme/tide_motion.dart';
 import '../../theme/tide_typography.dart';
 import '../../widgets/hold_to_fill.dart';
 import '../../widgets/tide_switch.dart';
+import '../../widgets/tide_tab_bar.dart';
 import 'widgets/account_card.dart';
 import 'widgets/settings_group.dart';
 import 'widgets/settings_row.dart';
@@ -50,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         20,
         MediaQuery.paddingOf(context).top + 16,
         20,
-        130,
+        TideTabBar.reservedHeight(context) + 28,
       ),
       children: [
         const Text('Settings', style: TideType.screenTitle),

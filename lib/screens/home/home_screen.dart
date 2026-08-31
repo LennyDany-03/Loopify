@@ -5,9 +5,11 @@ import '../../config/app_routes.dart';
 import '../../services/models/habit.dart';
 import '../../services/streak_calculator.dart';
 import '../../services/tide_scope.dart';
+import '../../theme/tide_colors.dart';
 import '../../theme/tide_typography.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/tide_button.dart';
+import '../../widgets/tide_tab_bar.dart';
 import 'widgets/day_complete_overlay.dart';
 import 'widgets/habit_card.dart';
 import 'widgets/habit_context_menu.dart';
@@ -151,7 +153,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverToBoxAdapter(
-                    child: Text('HABITS', style: TideType.sectionHeader),
+                    child: Row(
+                      children: [
+                        Text('HABITS', style: TideType.sectionHeader),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Container(
+                            height: 1,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  TideColors.divider,
+                                  TideColors.divider.withValues(alpha: 0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${habits.length}',
+                          style: TideType.gaugeSmall(
+                            color: TideColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 12)),
@@ -178,8 +205,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
-              // Clears the FAB and the tab bar.
-              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              // Clears the FAB and the floating tab bar it sits above.
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: TideTabBar.reservedHeight(context) + 96,
+                ),
+              ),
             ],
           ),
         ),

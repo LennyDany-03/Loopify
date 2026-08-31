@@ -6,16 +6,21 @@ import '../../config/app_routes.dart';
 import '../../services/tide_scope.dart';
 import '../../theme/tide_colors.dart';
 import '../../theme/tide_motion.dart';
-import '../../widgets/grain_overlay.dart';
+import '../../widgets/tide_backdrop.dart';
 import '../../widgets/tide_fab.dart';
 import '../../widgets/tide_tab_bar.dart';
 
 /// The frame around the four tabs.
 ///
-/// Holds the tab bar, the floating add action and the page grain. The tab
+/// Holds the page ground, the tab bar and the floating add action. The tab
 /// bodies stay alive in a stack rather than being rebuilt, so switching
 /// away from a half-scrolled Insights and back does not lose the position —
 /// and the crossfade has something real to fade between.
+///
+/// The backdrop is mounted once here rather than per screen, so all four
+/// tabs share a single continuous ground: switching tabs moves the content
+/// across a background that never moves, which is what makes the four feel
+/// like rooms in one app instead of four separate pages.
 class TideShell extends StatelessWidget {
   const TideShell({
     super.key,
@@ -50,9 +55,13 @@ class TideShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: TideColors.deepWater,
+      // The tab bar is frosted glass, so the page has to keep going behind
+      // it — there is nothing for a blur to sample otherwise. Scrolling
+      // screens buy that space back with `TideTabBar.reservedHeight`.
+      extendBody: true,
       body: Stack(
         children: [
-          const Positioned.fill(child: GrainOverlay()),
+          const Positioned.fill(child: TideBackdrop()),
           Positioned.fill(
             child: _BranchStack(
               currentIndex: navigationShell.currentIndex,
@@ -61,7 +70,7 @@ class TideShell extends StatelessWidget {
           ),
           Positioned(
             right: 20,
-            bottom: 20,
+            bottom: TideTabBar.reservedHeight(context) + 14,
             child: TideFabSlot(
               visible: _showFab,
               child: TideFab(onPressed: () => _onAdd(context)),

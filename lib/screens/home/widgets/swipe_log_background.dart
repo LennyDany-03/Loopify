@@ -58,7 +58,7 @@ class SwipeLogBackground extends StatelessWidget {
     if (offset.abs() < 1) return const SizedBox.shrink();
 
     return ClipRRect(
-      borderRadius: TideElevation.radius12,
+      borderRadius: TideElevation.radius16,
       child: Stack(
         children: [
           Positioned.fill(

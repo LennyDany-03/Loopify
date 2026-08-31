@@ -6,7 +6,7 @@ import '../../services/tide_scope.dart';
 import '../../theme/tide_colors.dart';
 import '../../theme/tide_elevation.dart';
 import '../../theme/tide_typography.dart';
-import '../../widgets/grain_overlay.dart';
+import '../../widgets/tide_backdrop.dart';
 import '../../widgets/press_scale.dart';
 import 'widgets/badge_grid.dart';
 import 'widgets/share_card_view.dart';
@@ -66,7 +66,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       backgroundColor: TideColors.deepWater,
       body: Stack(
         children: [
-          const Positioned.fill(child: GrainOverlay()),
+          const Positioned.fill(child: TideBackdrop()),
           ListView(
             padding: EdgeInsets.fromLTRB(
               20,

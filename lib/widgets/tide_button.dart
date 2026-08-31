@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/tide_colors.dart';
 import '../theme/tide_elevation.dart';
+import '../theme/tide_gradients.dart';
 import '../theme/tide_motion.dart';
 import '../theme/tide_typography.dart';
 import 'press_scale.dart';
@@ -53,10 +54,13 @@ class TideButton extends StatelessWidget {
 
   bool get _interactive => enabled && phase == TideButtonPhase.idle;
 
-  Color get _background => switch (variant) {
-    TideButtonVariant.primary => TideColors.tideBlue,
-    TideButtonVariant.secondary => TideColors.shallow,
-    TideButtonVariant.ghost => Colors.transparent,
+  /// Only the primary button is lit; the other two are surfaces, and a
+  /// surface that glows is a surface competing with the one action on the
+  /// screen that matters.
+  Gradient? get _gradient => switch (variant) {
+    TideButtonVariant.primary => TideGradients.accent,
+    TideButtonVariant.secondary => TideGradients.surface,
+    TideButtonVariant.ghost => null,
   };
 
   Color get _foreground => switch (variant) {
@@ -80,12 +84,20 @@ class TideButton extends StatelessWidget {
           width: expand ? double.infinity : null,
           height: 52,
           decoration: BoxDecoration(
-            color: _background,
+            gradient: _gradient,
             borderRadius: TideElevation.radius12,
             boxShadow:
                 shadows ??
                 (variant == TideButtonVariant.primary
-                    ? TideElevation.resting
+                    ? [
+                        ...TideElevation.resting,
+                        BoxShadow(
+                          color: TideColors.tideBlue.withValues(alpha: 0.28),
+                          blurRadius: 22,
+                          spreadRadius: -6,
+                          offset: const Offset(0, 6),
+                        ),
+                      ]
                     : null),
             border: variant == TideButtonVariant.secondary
                 ? Border.all(color: TideColors.divider)

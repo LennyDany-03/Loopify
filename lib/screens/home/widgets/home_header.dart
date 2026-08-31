@@ -4,6 +4,7 @@ import '../../../config/app_constants.dart';
 import '../../../services/models/tide_glyph.dart';
 import '../../../theme/tide_colors.dart';
 import '../../../theme/tide_elevation.dart';
+import '../../../theme/tide_gradients.dart';
 import '../../../theme/tide_typography.dart';
 import '../../../widgets/habit_glyph.dart';
 import '../../../widgets/press_scale.dart';
@@ -34,32 +35,91 @@ class HomeHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_dateLine, style: TideType.sectionHeader),
+              Row(
+                children: [
+                  // A lit tick in front of the date, so the eye finds the
+                  // top-left of the screen before anything else on it.
+                  Container(
+                    width: 4,
+                    height: 4,
+                    margin: const EdgeInsets.only(right: 8, bottom: 1),
+                    decoration: const BoxDecoration(
+                      gradient: TideGradients.accent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Text(_dateLine, style: TideType.sectionHeader),
+                ],
+              ),
               const SizedBox(height: 6),
-              const Text('Today', style: TideType.screenTitle),
+              // The screen title carries the accent ramp rather than flat
+              // text: it and the hero figure below it are the two things on
+              // Home lit from the same source as the background crown.
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    TideColors.textPrimary,
+                    TideColors.textPrimary,
+                    TideColors.foamCyan,
+                  ],
+                  stops: [0, 0.45, 1],
+                ).createShader(bounds),
+                child: const Text('Today', style: TideType.screenTitle),
+              ),
             ],
           ),
         ),
-        PressScale(
-          onTap: onMilestones,
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: TideColors.shallow,
-              borderRadius: TideElevation.radius12,
-              boxShadow: TideElevation.resting,
+        _MilestoneButton(onTap: onMilestones),
+      ],
+    );
+  }
+}
+
+/// The way through to milestones: a small pane of the same glass the tab
+/// bar is made of, so the two floating controls on Home are the same
+/// material.
+class _MilestoneButton extends StatelessWidget {
+  const _MilestoneButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return PressScale(
+      onTap: onTap,
+      child: Container(
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          gradient: TideGradients.glassStroke,
+          borderRadius: TideElevation.radius12,
+          boxShadow: [
+            ...TideElevation.resting,
+            BoxShadow(
+              color: TideColors.foamCyan.withValues(alpha: 0.14),
+              blurRadius: 16,
+              spreadRadius: -6,
             ),
-            child: const Center(
-              child: HabitGlyph(
-                glyph: TideGlyph.sparkle,
-                size: 15,
-                color: TideColors.foamCyan,
-              ),
+          ],
+        ),
+        padding: const EdgeInsets.all(1),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: TideGradients.surface,
+            borderRadius: BorderRadius.circular(TideElevation.r12 - 1),
+          ),
+          child: const Center(
+            child: HabitGlyph(
+              glyph: TideGlyph.sparkle,
+              size: 15,
+              color: TideColors.foamCyan,
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

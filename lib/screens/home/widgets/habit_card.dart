@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../../services/models/habit.dart';
 import '../../../theme/tide_colors.dart';
 import '../../../theme/tide_elevation.dart';
+import '../../../theme/tide_gradients.dart';
 import '../../../theme/tide_motion.dart';
 import '../../../theme/tide_typography.dart';
 import '../../../widgets/habit_glyph.dart';
@@ -248,13 +249,30 @@ class _HabitCardState extends State<HabitCard>
 
   Widget _body() {
     final surface = TideSurface(
-      radius: TideElevation.radius12,
+      radius: TideElevation.radius16,
       height: HabitCard.height,
       // Completed cards wash kelp green — the state is carried by the
-      // surface itself, not by a badge bolted onto it.
-      color: _done
-          ? Color.lerp(TideColors.shallow, TideColors.kelpGreen, 0.10)
-          : TideColors.shallow,
+      // surface itself, not by a badge bolted onto it. Frozen rows wash
+      // foam instead, so the two held states never read as the same thing.
+      gradient: TideGradients.habitRow(
+        tint: _frozen
+            ? TideColors.foamCyan
+            : _done
+            ? TideColors.kelpGreen
+            : null,
+        amount: _frozen ? 0.08 : 0.11,
+      ),
+      shadows: _done
+          ? [
+              ...TideElevation.resting,
+              BoxShadow(
+                color: TideColors.kelpGreen.withValues(alpha: 0.12),
+                blurRadius: 18,
+                spreadRadius: -8,
+                offset: const Offset(0, 4),
+              ),
+            ]
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(
         children: [
@@ -292,13 +310,15 @@ class _HabitCardState extends State<HabitCard>
               Positioned.fill(
                 child: IgnorePointer(
                   child: ClipRRect(
-                    borderRadius: TideElevation.radius12,
+                    borderRadius: TideElevation.radius16,
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: FractionallySizedBox(
                         widthFactor: progress,
-                        child: ColoredBox(
-                          color: TideColors.tideBlue.withValues(alpha: 0.12),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: TideGradients.accentWash(alpha: 0.16),
+                          ),
                           child: const SizedBox.expand(),
                         ),
                       ),
@@ -324,15 +344,31 @@ class _HabitCardState extends State<HabitCard>
     return PressScale(
       onTap: widget.onOpen,
       onLongPress: widget.onMenu,
-      child: TideRing(
-        progress: _done ? 1 : _progress,
-        size: 34,
-        strokeWidth: 2.5,
-        color: ringColor,
-        child: HabitGlyph(
-          glyph: widget.habit.glyph,
-          size: 14,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          // A ring with nothing in it yet gets no glow, so the row's one
+          // point of light always means "there is progress here".
+          boxShadow: [
+            BoxShadow(
+              color: ringColor.withValues(
+                alpha: 0.30 * (_done ? 1 : _progress),
+              ),
+              blurRadius: 14,
+              spreadRadius: -4,
+            ),
+          ],
+        ),
+        child: TideRing(
+          progress: _done ? 1 : _progress,
+          size: 36,
+          strokeWidth: 2.5,
           color: ringColor,
+          child: HabitGlyph(
+            glyph: widget.habit.glyph,
+            size: 14,
+            color: ringColor,
+          ),
         ),
       ),
     );
@@ -377,13 +413,17 @@ class _HabitCardState extends State<HabitCard>
   }
 
   Widget _streakPill() {
-    final color = _done ? TideColors.kelpGreen : TideColors.tideBlue;
+    final done = _done;
+    final color = done ? TideColors.kelpGreen : TideColors.tideBlue;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        gradient: done
+            ? TideGradients.completedWash(alpha: 0.20)
+            : TideGradients.accentWash(alpha: 0.16),
         borderRadius: TideElevation.radius8,
+        border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Text(_pillLabel, style: TideType.gaugeSmall(color: color)),
     );

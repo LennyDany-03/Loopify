@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'tide_colors.dart';
 import 'tide_elevation.dart';
+import 'tide_gradients.dart';
 import 'tide_typography.dart';
 
 /// Assembles the Material theme from the Tide tokens.
@@ -73,11 +74,18 @@ abstract final class TideTheme {
   }
 
   /// Light status-bar icons on the deep-water ground, edge-to-edge.
-  static const SystemUiOverlayStyle overlayStyle = SystemUiOverlayStyle(
+  ///
+  /// The navigation bar takes the *bottom* of the page gradient rather than
+  /// flat deep water. The ground darkens as it falls, so matching the token
+  /// would leave a visibly lighter strip pasted below the darkest part of
+  /// the screen — the exact seam the gradient exists to remove.
+  static final SystemUiOverlayStyle overlayStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
     statusBarBrightness: Brightness.dark,
-    systemNavigationBarColor: TideColors.deepWater,
+    systemNavigationBarColor: TideGradients.page.colors.last,
+    systemNavigationBarDividerColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
   );
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/tide_colors.dart';
 import '../theme/tide_elevation.dart';
+import '../theme/tide_gradients.dart';
 
 /// A card, sheet, row or chip — anything that sits above the page.
 ///
@@ -14,6 +14,7 @@ class TideSurface extends StatelessWidget {
     required this.child,
     this.radius = TideElevation.radius16,
     this.color,
+    this.gradient,
     this.floating = false,
     this.padding,
     this.margin,
@@ -27,6 +28,14 @@ class TideSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius radius;
   final Color? color;
+
+  /// The surface ramp. Defaults to [TideGradients.surface] — lifted at the
+  /// top-left, falling toward deep water at the bottom-right — so every
+  /// card in the app is lit from one direction without asking. Reach for
+  /// another [TideGradients] ramp rather than writing one here; an explicit
+  /// [color] still wins, for the handful of surfaces that are deliberately
+  /// flat.
+  final Gradient? gradient;
 
   /// Floating surfaces (FAB, sheets, context menus) take the deeper shadow.
   final bool floating;
@@ -52,7 +61,8 @@ class TideSurface extends StatelessWidget {
       height: height,
       margin: margin,
       decoration: BoxDecoration(
-        color: color ?? TideColors.shallow,
+        color: color,
+        gradient: color == null ? (gradient ?? TideGradients.surface) : null,
         borderRadius: radius,
         border: border,
         boxShadow:
@@ -100,6 +110,7 @@ class TideWell extends StatelessWidget {
     this.radius = TideElevation.radius12,
     this.padding,
     this.color,
+    this.gradient,
     this.border,
   });
 
@@ -107,6 +118,11 @@ class TideWell extends StatelessWidget {
   final BorderRadius radius;
   final EdgeInsetsGeometry? padding;
   final Color? color;
+
+  /// Defaults to [TideGradients.well] — lit from below, which is what makes
+  /// the surface read as carved into the card rather than sitting on it.
+  final Gradient? gradient;
+
   final BoxBorder? border;
 
   @override
@@ -114,7 +130,8 @@ class TideWell extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color ?? TideColors.well,
+        color: color,
+        gradient: color == null ? (gradient ?? TideGradients.well) : null,
         borderRadius: radius,
         border: border,
       ),

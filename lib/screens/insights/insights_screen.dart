@@ -6,6 +6,7 @@ import '../../services/tide_scope.dart';
 import '../../theme/tide_colors.dart';
 import '../../theme/tide_typography.dart';
 import '../../widgets/press_scale.dart';
+import '../../widgets/tide_tab_bar.dart';
 import '../../widgets/stagger_list.dart';
 import 'widgets/day_callouts.dart';
 import 'widgets/freeze_usage_card.dart';
@@ -43,7 +44,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         20,
         MediaQuery.paddingOf(context).top + 16,
         20,
-        130,
+        TideTabBar.reservedHeight(context) + 28,
       ),
       children: [
         Row(

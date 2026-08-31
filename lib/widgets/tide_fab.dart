@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/tide_colors.dart';
 import '../theme/tide_elevation.dart';
+import '../theme/tide_gradients.dart';
 import '../theme/tide_motion.dart';
 import 'press_scale.dart';
 
@@ -36,7 +37,7 @@ class TideFab extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: TideColors.tideBlue,
+          gradient: TideGradients.accent,
           shape: BoxShape.circle,
           boxShadow: TideElevation.fabGlow(),
         ),
@@ -60,7 +61,7 @@ class TideFabMorphTarget extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: TideColors.tideBlue.withValues(alpha: 0.16),
+        gradient: TideGradients.accentWash(alpha: 0.18),
         shape: BoxShape.circle,
         border: Border.all(color: TideColors.tideBlue.withValues(alpha: 0.5)),
       ),

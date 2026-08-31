@@ -9,7 +9,7 @@ import '../../services/tide_scope.dart';
 import '../../theme/tide_colors.dart';
 import '../../theme/tide_motion.dart';
 import '../../theme/tide_typography.dart';
-import '../../widgets/grain_overlay.dart';
+import '../../widgets/tide_backdrop.dart';
 import '../../widgets/press_scale.dart';
 import '../../widgets/tide_button.dart';
 import 'widgets/notification_step.dart';
@@ -135,8 +135,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       backgroundColor: TideColors.deepWater,
       body: Stack(
         children: [
-          const Positioned.fill(child: AmbientDrift()),
-          const Positioned.fill(child: GrainOverlay()),
+          // The one screen allowed a looping background: first run has no
+          // history to show yet, so a still page would read as unloaded.
+          const Positioned.fill(child: TideBackdrop(drift: true)),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
