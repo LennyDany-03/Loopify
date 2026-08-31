@@ -168,9 +168,7 @@ class _ActivePill extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(17)),
         gradient: TideGradients.accentWash(alpha: 0.16),
-        border: Border.all(
-          color: TideColors.tideBlue.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: TideColors.tideBlue.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
             color: TideColors.tideBlue.withValues(alpha: 0.18),

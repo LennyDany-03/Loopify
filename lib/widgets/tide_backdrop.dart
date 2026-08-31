@@ -88,10 +88,7 @@ class _TideBackdropState extends State<TideBackdrop>
       child: RepaintBoundary(
         child: Stack(
           fit: StackFit.expand,
-          children: [
-            ground,
-            if (widget.grain) const GrainOverlay(),
-          ],
+          children: [ground, if (widget.grain) const GrainOverlay()],
         ),
       ),
     );

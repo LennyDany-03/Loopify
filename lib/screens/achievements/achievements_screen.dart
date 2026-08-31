@@ -146,12 +146,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
               ),
             ],
           ),
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: TideTopScrim(),
-          ),
+          const Positioned(top: 0, left: 0, right: 0, child: TideTopScrim()),
           if (_celebrating != null)
             Positioned.fill(
               child: UnlockCelebration(

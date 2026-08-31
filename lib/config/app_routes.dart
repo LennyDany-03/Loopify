@@ -51,8 +51,15 @@ abstract final class AppRoutes {
           builder: (context, state, shell) => shell,
           navigatorContainerBuilder: (context, shell, children) =>
               TideShell(navigationShell: shell, branches: children),
+          // Every branch is preloaded. Branches are lazy by default, which
+          // is fine when the only way between them is a tab tap — the new
+          // one is built before it is shown. It is not fine with a swipe:
+          // the page arriving under your finger would be blank until you
+          // let go of it. Four light screens is a cheap price for the
+          // incoming page being there the moment it appears.
           branches: [
             StatefulShellBranch(
+              preload: true,
               routes: [
                 GoRoute(
                   path: Routes.today,
@@ -69,6 +76,7 @@ abstract final class AppRoutes {
               ],
             ),
             StatefulShellBranch(
+              preload: true,
               routes: [
                 GoRoute(
                   path: Routes.history,
@@ -77,6 +85,7 @@ abstract final class AppRoutes {
               ],
             ),
             StatefulShellBranch(
+              preload: true,
               routes: [
                 GoRoute(
                   path: Routes.insights,
@@ -85,6 +94,7 @@ abstract final class AppRoutes {
               ],
             ),
             StatefulShellBranch(
+              preload: true,
               routes: [
                 GoRoute(
                   path: Routes.settings,
