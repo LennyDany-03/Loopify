@@ -178,13 +178,20 @@ abstract final class TideGradients {
 
   /// A card at rest: the shallow fill, lifted at the top-left corner and
   /// falling toward deep water at the bottom-right.
+  ///
+  /// The dark end stops well short of [TideColors.well]. It has to: a well
+  /// is a recess *cut into* a card, and the two are only 0.03 of a lerp
+  /// apart at full depth — carry the ramp that far and every empty heatmap
+  /// cell in the bottom-right of a card dissolves into the card behind it.
+  /// The lift at the top-left does the work of making this read as a ramp
+  /// instead.
   static LinearGradient get surface => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color.lerp(TideColors.shallow, TideColors.textPrimary, 0.045)!,
+      Color.lerp(TideColors.shallow, TideColors.textPrimary, 0.07)!,
       TideColors.shallow,
-      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.42)!,
+      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.18)!,
     ],
     stops: const [0, 0.5, 1],
   );
@@ -198,8 +205,8 @@ abstract final class TideGradients {
     colors: [
       Color.lerp(TideColors.shallow, TideColors.tideBlue, 0.26)!,
       Color.lerp(TideColors.shallow, TideColors.tideBlue, 0.10)!,
-      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.30)!,
-      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.55)!,
+      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.24)!,
+      Color.lerp(TideColors.shallow, TideColors.deepWater, 0.42)!,
     ],
     stops: const [0, 0.34, 0.72, 1],
   );
@@ -215,9 +222,9 @@ abstract final class TideGradients {
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
       colors: [
-        Color.lerp(base, TideColors.textPrimary, 0.035)!,
+        Color.lerp(base, TideColors.textPrimary, 0.05)!,
         base,
-        Color.lerp(base, TideColors.deepWater, 0.34)!,
+        Color.lerp(base, TideColors.deepWater, 0.20)!,
       ],
       stops: const [0, 0.5, 1],
     );

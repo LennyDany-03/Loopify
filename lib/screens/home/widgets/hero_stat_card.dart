@@ -198,28 +198,32 @@ class _LoggedCount extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            // The hero figure is the one place a gradient touches type:
-            // it is the number the whole screen exists to show.
-            ShaderMask(
-              blendMode: BlendMode.srcIn,
-              shaderCallback: (bounds) =>
-                  (done ? TideGradients.completed : TideGradients.accent)
-                      .createShader(bounds),
-              child: GaugeNumber(
-                value: completed,
-                style: TideType.gaugeHero(),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              // The hero figure is the one place a gradient touches type:
+              // it is the number the whole screen exists to show.
+              ShaderMask(
+                blendMode: BlendMode.srcIn,
+                shaderCallback: (bounds) =>
+                    (done ? TideGradients.completed : TideGradients.accent)
+                        .createShader(bounds),
+                child: GaugeNumber(
+                  value: completed,
+                  style: TideType.gaugeHero(),
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              '/ $scheduled',
-              style: TideType.gauge(18, color: TideColors.textMuted),
-            ),
-          ],
+              const SizedBox(width: 4),
+              Text(
+                '/ $scheduled',
+                style: TideType.gauge(18, color: TideColors.textMuted),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 7),
         Text(
@@ -317,23 +321,28 @@ class _StatWell extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Container(
-                width: 3,
-                height: 15,
-                margin: const EdgeInsets.only(right: 9),
-                decoration: BoxDecoration(
-                  color: accent,
-                  borderRadius: BorderRadius.circular(2),
+          // Two wells share the row; a three-digit figure with a suffix
+          // scales down rather than spilling past the well's edge.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Container(
+                  width: 3,
+                  height: 15,
+                  margin: const EdgeInsets.only(right: 9),
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              GaugeNumber(value: value, style: TideType.gauge(19)),
-              if (suffix != null)
-                Text(suffix!, style: TideType.gauge(12.5)),
-            ],
+                GaugeNumber(value: value, style: TideType.gauge(19)),
+                if (suffix != null) Text(suffix!, style: TideType.gauge(12.5)),
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           Text(

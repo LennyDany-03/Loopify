@@ -132,3 +132,43 @@ class _GroundPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GroundPainter old) => old.phase != phase;
 }
+
+/// The dissolve under the status bar.
+///
+/// Every screen in Tide is edge-to-edge and scrolls its own header, so
+/// without this a title travels straight up into the system clock and the
+/// two render on top of each other. The fix is not a solid bar — that would
+/// cut the page in half and undo the ground — but a short fade in the page
+/// ground's own top colour, so content thins out as it leaves rather than
+/// colliding with the OS.
+class TideTopScrim extends StatelessWidget {
+  const TideTopScrim({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final inset = MediaQuery.viewPaddingOf(context).top;
+    // Matches the first stop of the page gradient, which is what the top
+    // few pixels of the backdrop actually are.
+    final ground = TideGradients.page.colors.first;
+
+    return IgnorePointer(
+      child: SizedBox(
+        height: inset + 14,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [ground, ground, ground.withValues(alpha: 0)],
+              // Solid across the inset itself, then a short tail — long
+              // enough to read as a fade, short enough that it never eats
+              // into a header sitting at its resting position.
+              stops: const [0, 0.62, 1],
+            ),
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+}

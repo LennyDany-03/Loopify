@@ -39,13 +39,20 @@ class StatCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        GaugeCountUp(
-          value: value,
-          style: compact
-              ? TideType.gauge(17, color: color)
-              : TideType.gaugeStat(color: color),
-          suffix: suffix,
-          delay: delay,
+        // Three chips share the row, so a three-digit rate and its suffix
+        // can want more width than one chip has. Scaling down keeps the
+        // readout on one line instead of letting the Row spill.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: GaugeCountUp(
+            value: value,
+            style: compact
+                ? TideType.gauge(17, color: color)
+                : TideType.gaugeStat(color: color),
+            suffix: suffix,
+            delay: delay,
+          ),
         ),
         SizedBox(height: compact ? 3 : 6),
         Text(

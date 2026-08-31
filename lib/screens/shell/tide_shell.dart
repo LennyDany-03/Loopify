@@ -31,9 +31,18 @@ class TideShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
   final List<Widget> branches;
 
-  /// Settings has no add action; everywhere else the FAB is the primary way
-  /// a habit gets created.
-  bool get _showFab => navigationShell.currentIndex != 3;
+  /// Where the add action belongs.
+  ///
+  /// The three list tabs, and only at their root. Settings has nothing to
+  /// add, and a pushed screen — habit detail — carries its own controls at
+  /// the bottom of the page, which the FAB would otherwise sit directly on
+  /// top of. Matching against the tab paths rather than tracking a stack
+  /// depth keeps this true for any screen pushed inside a branch later.
+  bool _showFab(BuildContext context) {
+    if (navigationShell.currentIndex == 3) return false;
+    final location = GoRouter.of(context).state.matchedLocation;
+    return TideTab.all.any((tab) => tab.path == location);
+  }
 
   void _onTap(int index) {
     navigationShell.goBranch(
@@ -68,11 +77,17 @@ class TideShell extends StatelessWidget {
               branches: branches,
             ),
           ),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: TideTopScrim(),
+          ),
           Positioned(
             right: 20,
             bottom: TideTabBar.reservedHeight(context) + 14,
             child: TideFabSlot(
-              visible: _showFab,
+              visible: _showFab(context),
               child: TideFab(onPressed: () => _onAdd(context)),
             ),
           ),

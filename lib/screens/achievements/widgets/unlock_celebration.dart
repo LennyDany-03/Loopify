@@ -84,6 +84,10 @@ class _UnlockCelebrationState extends State<UnlockCelebration>
                     trigger: _tick,
                     particles: true,
                     intensity: 2.2,
+                    // The one place the rings are meant to leave their
+                    // bounds: this sits on a full-screen scrim, and the
+                    // burst reaching past the badge is the celebration.
+                    clip: false,
                     color: TideColors.kelpGreen,
                     accent: TideColors.foamCyan,
                     child: Transform.scale(

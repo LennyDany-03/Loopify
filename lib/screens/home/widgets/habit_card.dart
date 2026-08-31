@@ -237,6 +237,7 @@ class _HabitCardState extends State<HabitCard>
                 child: RippleBurst(
                   trigger: _rippleTick,
                   color: TideColors.kelpGreen,
+                  borderRadius: TideElevation.radius16,
                   child: _body(),
                 ),
               ),

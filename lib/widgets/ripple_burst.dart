@@ -26,6 +26,8 @@ class RippleBurst extends StatefulWidget {
     this.intensity = 1,
     this.origin = Alignment.center,
     this.duration,
+    this.clip = true,
+    this.borderRadius,
   });
 
   final Widget child;
@@ -44,6 +46,19 @@ class RippleBurst extends StatefulWidget {
 
   final Alignment origin;
   final Duration? duration;
+
+  /// Keeps the rings inside the widget they belong to.
+  ///
+  /// On by default, and it has to be: the rings run to 0.72 of the *longer*
+  /// side, so on a wide, short surface like a habit row they reach far
+  /// above and below it. Unclipped, logging one habit throws a circle
+  /// across the whole list. Turn it off only where the spill is the effect
+  /// — the milestone burst, which is centred on a full-screen scrim.
+  final bool clip;
+
+  /// Rounds the clip to match the surface underneath, so the wash stops at
+  /// the card's corners rather than squaring them off.
+  final BorderRadius? borderRadius;
 
   @override
   State<RippleBurst> createState() => _RippleBurstState();
@@ -117,6 +132,8 @@ class _RippleBurstState extends State<RippleBurst>
                     intensity: widget.intensity,
                     origin: widget.origin,
                     particles: widget.particles ? _particles : const [],
+                    clip: widget.clip,
+                    borderRadius: widget.borderRadius,
                   ),
                 );
               },
@@ -154,6 +171,8 @@ class _RipplePainter extends CustomPainter {
     required this.intensity,
     required this.origin,
     required this.particles,
+    required this.clip,
+    required this.borderRadius,
   });
 
   final double t;
@@ -162,11 +181,26 @@ class _RipplePainter extends CustomPainter {
   final double intensity;
   final Alignment origin;
   final List<_Particle> particles;
+  final bool clip;
+  final BorderRadius? borderRadius;
 
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
     final center = origin.withinRect(rect);
+
+    // Clipped here rather than by a ClipRRect around the child: wrapping
+    // the child would crop the surface's drop shadow along with the rings.
+    if (clip) {
+      canvas.save();
+      final radius = borderRadius;
+      if (radius == null) {
+        canvas.clipRect(rect);
+      } else {
+        canvas.clipRRect(radius.toRRect(rect));
+      }
+    }
+
     final maxRadius = math.max(size.width, size.height) * 0.72 * intensity;
 
     // Two rings, the second trailing the first — the water reading of a
@@ -223,8 +257,11 @@ class _RipplePainter extends CustomPainter {
           ),
       );
     }
+
+    if (clip) canvas.restore();
   }
 
   @override
-  bool shouldRepaint(_RipplePainter old) => old.t != t;
+  bool shouldRepaint(_RipplePainter old) =>
+      old.t != t || old.clip != clip || old.borderRadius != borderRadius;
 }

@@ -73,29 +73,62 @@ class _Odometer extends StatelessWidget {
       children: [
         if (negative) Text('-', style: style),
         for (var place = digits - 1; place >= 0; place--)
-          _DigitWheel(value: magnitudeValue, place: place, style: style),
+          _DigitWheel(
+            value: magnitudeValue,
+            place: place,
+            style: style,
+            // The slot count comes from the target so the readout never
+            // changes width mid-count, but a place the value has not
+            // reached yet holds an empty column rather than a zero —
+            // otherwise a rate counting up to 100% reads "084%" the whole
+            // way there. [minDigits] is the opt-out, for 08:00.
+            blank:
+                place + 1 > minDigits &&
+                place > 0 &&
+                magnitudeValue < math.pow(10, place),
+          ),
       ],
     );
   }
 }
 
-/// One digit column. Shows the current digit and the next one stacked, and
-/// slides between them only while the place below is wrapping — which is
-/// what gives the staggered mechanical feel rather than every digit
-/// spinning at once.
+/// One digit column.
+///
+/// The change from one digit to the next is a short rise plus a crossfade,
+/// not a full-height wheel. A full-height wheel is the honest mechanical
+/// model, but it puts the bottom half of the outgoing digit and the top
+/// half of the incoming one in the window at the same time, for the whole
+/// length of the roll — and two half-glyphs stacked do not read as a number
+/// turning over, they read as a rendering fault sitting in the middle of
+/// the card. Moving a third of the height and letting opacity carry the
+/// rest keeps the motion without ever showing a shape that is not a digit.
+///
+/// The column is a fixed box that never changes size, so nothing around it
+/// — the caption under it, the suffix beside it, the card behind it —
+/// moves while a number is animating.
 class _DigitWheel extends StatelessWidget {
   const _DigitWheel({
     required this.value,
     required this.place,
     required this.style,
+    this.blank = false,
   });
 
   final double value;
   final int place;
   final TextStyle style;
 
+  /// Holds the column's width without drawing anything in it.
+  final bool blank;
+
+  /// Fraction of the box a digit travels as it hands over.
+  static const double _travel = 0.34;
+
   @override
   Widget build(BuildContext context) {
+    final size = _measureDigit(style, MediaQuery.textScalerOf(context));
+    if (blank) return SizedBox(width: size.width, height: size.height);
+
     final divisor = math.pow(10, place).toDouble();
     final scaled = value / divisor;
     final digit = scaled.floor() % 10;
@@ -105,7 +138,19 @@ class _DigitWheel extends StatelessWidget {
     // below that the digit sits still while the wheels beneath it spin.
     final roll = ((fraction * 10) - 9).clamp(0.0, 1.0);
 
-    final size = _measure('0', style);
+    Widget face(int shown, double offset, double opacity) {
+      if (opacity <= 0.01) return const SizedBox.shrink();
+      return Positioned(
+        left: 0,
+        right: 0,
+        top: offset,
+        height: size.height,
+        child: Opacity(
+          opacity: opacity.clamp(0.0, 1.0),
+          child: Text('$shown', style: style, textAlign: TextAlign.center),
+        ),
+      );
+    }
 
     return SizedBox(
       width: size.width,
@@ -113,43 +158,42 @@ class _DigitWheel extends StatelessWidget {
       child: ClipRect(
         child: Stack(
           children: [
-            Positioned(
-              top: -roll * size.height,
-              child: SizedBox(
-                width: size.width,
-                height: size.height,
-                child: Text(
-                  '$digit',
-                  style: style,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-            Positioned(
-              top: (1 - roll) * size.height,
-              child: SizedBox(
-                width: size.width,
-                height: size.height,
-                child: Text(
-                  '${(digit + 1) % 10}',
-                  style: style,
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
+            face(digit, -roll * size.height * _travel, 1 - roll),
+            face((digit + 1) % 10, (1 - roll) * size.height * _travel, roll),
           ],
         ),
       ),
     );
   }
+}
 
-  static Size _measure(String text, TextStyle style) {
+/// Cache of the box one digit occupies, keyed by the style and the ambient
+/// text scale.
+///
+/// Measuring is a full `TextPainter` layout, and it used to run once per
+/// digit per frame — four gauges animating at once meant dozens of layouts
+/// a frame, which is enough dropped frames to make the card they sit in
+/// stutter. The metrics only depend on the style and the scale, so they are
+/// measured once.
+final Map<String, Size> _digitSizes = {};
+
+Size _measureDigit(TextStyle style, TextScaler scaler) {
+  final key =
+      '${style.fontFamily}|${style.fontSize}|${style.fontWeight}'
+      '|${style.height}|${style.letterSpacing}|${scaler.scale(1000)}';
+
+  return _digitSizes.putIfAbsent(key, () {
     final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
+      text: TextSpan(text: '0', style: style),
       textDirection: TextDirection.ltr,
+      // Honouring the ambient scale matters: without it the box is measured
+      // at 1.0 while the glyph renders larger, and the clip crops the digit.
+      textScaler: scaler,
     )..layout();
-    return painter.size;
-  }
+    final size = painter.size;
+    painter.dispose();
+    return size;
+  });
 }
 
 /// A number that counts up from zero when it first appears — the entrance
